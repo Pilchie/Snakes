@@ -3,7 +3,6 @@ using Orleans;
 using Orleans.Configuration;
 using Snakes;
 using System.Diagnostics;
-using System.Drawing;
 
 try
 {
@@ -52,16 +51,15 @@ var players = new List<Player>();
 var berries = new List<Pixel>();
 
 var random = new Random();
-var self = new Player(random, ConsoleColor.Blue, ConsoleColor.DarkBlue);
+var self = new Player(random, Color.Blue, Color.DarkBlue, Console.WindowWidth, Console.WindowHeight - 1);
 players.Add(self);
-berries.Add(new Pixel(random.OnScreen(0), ConsoleColor.Red));
+berries.Add(new Pixel(random.OnScreen(0, Console.WindowWidth, Console.WindowHeight - 1), Color.Red));
 
 for (int i = 0; i < 4; i++)
 {
-    players.Add(new Player(random, ConsoleColor.Green, ConsoleColor.DarkGreen));
-    berries.Add(new Pixel(random.OnScreen(0), ConsoleColor.Red));
+    players.Add(new Player(random, Color.Green, Color.DarkGreen, Console.WindowWidth, Console.WindowHeight - 1));
+    berries.Add(new Pixel(random.OnScreen(0, Console.WindowWidth, Console.WindowHeight - 1), Color.Red));
 }
-
 
 var originalBg = Console.BackgroundColor;
 var originalFg = Console.ForegroundColor;
@@ -75,12 +73,15 @@ while (self.IsAlive && players.Count > 1)
     Console.Write($"Score: {self.Score}");
     foreach (var b in berries)
     {
-        b.Draw();
+        DrawPixel(b);
     }
 
     foreach (var p in players)
     {
-        p.Draw();
+        foreach (var px in p.Body)
+        {
+            DrawPixel(px);
+        }
     }
 
     var sw = Stopwatch.StartNew();
@@ -160,7 +161,7 @@ while (self.IsAlive && players.Count > 1)
 
     for (int i = 0; i < players.Count - berries.Count; i++)
     {
-        berries.Add(new Pixel(random.OnScreen(border: 0), ConsoleColor.Red));
+        berries.Add(new Pixel(random.OnScreen(border: 0, Console.WindowWidth, Console.WindowHeight), Color.Red));
     }
 }
 
@@ -170,156 +171,23 @@ Console.WriteLine($"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive
 Console.BackgroundColor = originalBg;
 Console.ForegroundColor = originalFg;
 
-public static class Extensions
+static void DrawPixel(Pixel pixel)
 {
-    public static Point OnScreen(this Random random, int border)
-        => new Point(random.Next(border, Console.WindowWidth - border), random.Next(border, Console.WindowHeight - border));
-
-    public static Point Move(this Point point, Direction direction)
-        => direction switch
-        {
-            Direction.Up => new Point(point.X, point.Y - 1),
-            Direction.Left => new Point(point.X - 1, point.Y),
-            Direction.Down => new Point(point.X, point.Y + 1),
-            Direction.Right => new Point(point.X + 1, point.Y),
-            _ => throw new InvalidOperationException("What direction are you asking to move?"),
-        };
-
-    public static Direction LeftOf(this Direction direction)
-        => direction switch
-        {
-            Direction.Up => Direction.Left,
-            Direction.Left => Direction.Down,
-            Direction.Down => Direction.Right,
-            Direction.Right => Direction.Up,
-            _ => throw new InvalidOperationException("What direction are we going???"),
-        };
-
-    public static Direction RightOf(this Direction direction)
-        => direction switch
-        {
-            Direction.Up => Direction.Right,
-            Direction.Right => Direction.Down,
-            Direction.Down => Direction.Left,
-            Direction.Left => Direction.Up,
-            _ => throw new InvalidOperationException("What direction are we going???"),
-        };
-
-    public static Direction OppositeOf(this Direction direction)
-        => direction switch
-        {
-            Direction.Up => Direction.Down,
-            Direction.Right => Direction.Left,
-            Direction.Down => Direction.Up,
-            Direction.Left => Direction.Right,
-            _ => throw new InvalidOperationException("What direction are we going???"),
-        };
+    Console.SetCursorPosition(pixel.Location.X, pixel.Location.Y);
+    Console.ForegroundColor = MapToConsoleColor(pixel.Color);
+    Console.Write("█");
+    Console.SetCursorPosition(0, Console.WindowHeight - 1);
 }
 
-public class Player
-{
-    private readonly List<Pixel> _body = new List<Pixel>(1);
-    private Pixel? _last;
-
-    public Pixel Head
+static ConsoleColor MapToConsoleColor(Color color)
+    => color switch
     {
-        get => _body[0];
-        set => _body[0] = value;
-    }
-
-    public Player(Random random, ConsoleColor headColor, ConsoleColor bodyColor)
-    {
-        Direction = (Direction)random.Next(4);
-        _body.Add(new Pixel(random.OnScreen(border: 5), headColor));
-        var pixel = Head;
-        for (int i = 0; i < 4; i++)
-        {
-            pixel = new Pixel(pixel.Location.Move(Direction.OppositeOf()), bodyColor);
-            _body.Add(pixel);
-        }
-    }
-
-    public IEnumerable<Pixel> Body
-        => _body;
-
-    public Direction Direction { get; private set; }
-
-    public bool IsAlive { get; set; } = true;
-
-    public int Score { get; private set; }
-
-    public bool Advance()
-    {
-        var bodyColor = _body.Last().Color;
-        _last = _body.Last();
-        for (int i = _body.Count - 1; i > 0; i--)
-        {
-            _body[i] = new Pixel(_body[i - 1].Location, bodyColor);
-        }
-
-        Head = new Pixel(Head.Location.Move(Direction), Head.Color);
-
-        if (Head.Location.X < 0
-            || Head.Location.Y < 0
-            || Head.Location.X >= Console.WindowWidth
-            || Head.Location.Y >= Console.WindowHeight)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    public void Draw()
-    {
-        foreach (var p in Body)
-        {
-            p.Draw();
-        }
-    }
-
-    public void TurnLeft()
-        => Direction = Direction.LeftOf();
-
-    public void TurnRight()
-        => Direction = Direction.RightOf();
-
-    public void FoundBerry()
-    {
-        Score++;
-        if (_last is not null)
-        {
-            _body.Add(_last);
-        }
-
-    }
-}
-
-public enum Direction
-{
-    Up,
-    Left,
-    Down,
-    Right,
-}
-
-[DebuggerDisplay("({Location.X}, {Location.Y}) - {Color}")]
-public class Pixel
-{
-    public Point Location { get; }
-    public ConsoleColor Color { get; }
-
-    public Pixel(Point location, ConsoleColor color)
-    {
-        Location = location;
-        Color = color;
-    }
-
-    public void Draw()
-    {
-        Console.SetCursorPosition(Location.X, Location.Y);
-        Console.ForegroundColor = Color;
-        Console.Write("█");
-        Console.SetCursorPosition(0, 0);
-    }
-}
+        Color.Black => ConsoleColor.Black,
+        Color.White => ConsoleColor.White,
+        Color.Red => ConsoleColor.Red,
+        Color.Blue => ConsoleColor.Blue,
+        Color.Green => ConsoleColor.Green,
+        Color.DarkBlue => ConsoleColor.DarkBlue,
+        Color.DarkGreen => ConsoleColor.DarkGreen,
+        _ => throw new NotSupportedException("Unexpected color to draw!"),
+    };
