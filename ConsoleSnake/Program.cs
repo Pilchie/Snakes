@@ -1,5 +1,52 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Extensions.Logging;
+using Orleans;
+using Orleans.Configuration;
+using Snakes;
+using System.Diagnostics;
 using System.Drawing;
+
+try
+{
+    using (var client = await ConnectClient())
+    {
+        await DoClientWork(client);
+        Console.ReadKey();
+    }
+}
+catch (Exception e)
+{
+    Console.WriteLine($"\nException while trying to run client: {e.Message}");
+    Console.WriteLine("Make sure the silo the client is trying to connect to is running.");
+    Console.WriteLine("\nPress any key to exit.");
+    Console.ReadKey();
+    return;
+}
+
+static async Task<IClusterClient> ConnectClient()
+{
+    IClusterClient client;
+    client = new ClientBuilder()
+        .UseLocalhostClustering()
+        .Configure<ClusterOptions>(options =>
+        {
+            options.ClusterId = "dev";
+            options.ServiceId = "Snakes";
+        })
+        .ConfigureLogging(logging => logging.AddConsole())
+        .Build();
+
+    await client.Connect();
+    Console.WriteLine("Client successfully connected to silo host \n");
+    return client;
+}
+
+static async Task DoClientWork(IClusterClient client)
+{
+    // example of calling grains from the initialized client
+    var player = client.GetGrain<IPlayer>("Pilchie");
+    var response = await player.Advance();
+    Console.WriteLine($"\n\n{response}\n\n");
+}
 
 var players = new List<Player>();
 var berries = new List<Pixel>();
@@ -23,6 +70,9 @@ Console.BackgroundColor = ConsoleColor.Black;
 while (self.IsAlive && players.Count > 1)
 {
     Console.Clear();
+    Console.ForegroundColor = ConsoleColor.White;
+    Console.SetCursorPosition(0, Console.WindowHeight - 1);
+    Console.Write($"Score: {self.Score}");
     foreach (var b in berries)
     {
         b.Draw();
@@ -114,10 +164,11 @@ while (self.IsAlive && players.Count > 1)
     }
 }
 
+Console.ForegroundColor = ConsoleColor.White;
+Console.SetCursorPosition(0, Console.WindowHeight - 1);
+Console.WriteLine($"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive ? "won!" : "lost :'(")}");
 Console.BackgroundColor = originalBg;
 Console.ForegroundColor = originalFg;
-Console.Clear();
-Console.WriteLine($"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive ? "won!" : "lost :'(")}");
 
 public static class Extensions
 {
