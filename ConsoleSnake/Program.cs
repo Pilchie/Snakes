@@ -70,19 +70,18 @@ Console.BackgroundColor = ConsoleColor.Black;
 while (self.IsAlive && players.Count > 1)
 {
     Console.Clear();
-    Console.ForegroundColor = ConsoleColor.White;
-    Console.SetCursorPosition(0, Console.WindowHeight - 1);
-    Console.Write($"Score: {self.Score}");
+    DrawAt(new Point(0, boardSize.Height), KnownColor.White, $"Score: {self.Score}", boardSize);
+
     foreach (var b in berries)
     {
-        DrawPixel(b);
+        DrawPixel(b, boardSize);
     }
 
     foreach (var p in players)
     {
         foreach (var px in p.Body)
         {
-            DrawPixel(px);
+            DrawPixel(px, boardSize);
         }
     }
 
@@ -167,18 +166,19 @@ while (self.IsAlive && players.Count > 1)
     }
 }
 
-Console.ForegroundColor = ConsoleColor.White;
-Console.SetCursorPosition(0, Console.WindowHeight - 1);
-Console.WriteLine($"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive ? "won!" : "lost :'(")}");
+DrawAt(new Point(5, boardSize.Height - 5), KnownColor.White, $"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive ? "won!" : "lost :'(")}", boardSize);
 Console.BackgroundColor = originalBg;
 Console.ForegroundColor = originalFg;
 
-static void DrawPixel(Pixel pixel)
+static void DrawPixel(Pixel pixel, Size boardSize)
+    => DrawAt(pixel.Location, pixel.Color, "█", boardSize);
+
+static void DrawAt(Point location, KnownColor color, string value, Size boardSize)
 {
-    Console.SetCursorPosition(pixel.Location.X, pixel.Location.Y);
-    Console.ForegroundColor = MapToConsoleColor(pixel.Color);
-    Console.Write("█");
-    Console.SetCursorPosition(0, Console.WindowHeight - 1);
+    Console.SetCursorPosition(location.X, location.Y);
+    Console.ForegroundColor = MapToConsoleColor(color);
+    Console.Write(value);
+    Console.SetCursorPosition(0, boardSize.Height);
 }
 
 static ConsoleColor MapToConsoleColor(KnownColor color)
