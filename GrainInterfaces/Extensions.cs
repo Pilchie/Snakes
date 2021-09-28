@@ -5,8 +5,8 @@ namespace Snakes;
 
 public static class Extensions
 {
-    public static Point OnScreen(this Random random, int border, int width, int height)
-        => new Point(random.Next(border, width - border), random.Next(border, height - border));
+    public static Point OnScreen(this Random random, int border, Size size)
+        => new Point(random.Next(border, size.Width - border), random.Next(border, size.Height - border));
 
     public static Point Move(this Point point, Direction direction)
         => direction switch

@@ -3,6 +3,7 @@ using Orleans;
 using Orleans.Configuration;
 using Snakes;
 using System.Diagnostics;
+using System.Drawing;
 
 try
 {
@@ -51,14 +52,15 @@ var players = new List<Player>();
 var berries = new List<Pixel>();
 
 var random = new Random();
-var self = new Player(random, Color.Blue, Color.DarkBlue, Console.WindowWidth, Console.WindowHeight - 1);
+var boardSize = new Size(Console.WindowWidth, Console.WindowHeight - 1);
+var self = new Player(random, KnownColor.Blue, KnownColor.DarkBlue, boardSize);
 players.Add(self);
-berries.Add(new Pixel(random.OnScreen(0, Console.WindowWidth, Console.WindowHeight - 1), Color.Red));
+berries.Add(new Pixel(random.OnScreen(0, boardSize), KnownColor.Red));
 
 for (int i = 0; i < 4; i++)
 {
-    players.Add(new Player(random, Color.Green, Color.DarkGreen, Console.WindowWidth, Console.WindowHeight - 1));
-    berries.Add(new Pixel(random.OnScreen(0, Console.WindowWidth, Console.WindowHeight - 1), Color.Red));
+    players.Add(new Player(random, KnownColor.Green, KnownColor.DarkGreen, boardSize));
+    berries.Add(new Pixel(random.OnScreen(0, boardSize), KnownColor.Red));
 }
 
 var originalBg = Console.BackgroundColor;
@@ -161,7 +163,7 @@ while (self.IsAlive && players.Count > 1)
 
     for (int i = 0; i < players.Count - berries.Count; i++)
     {
-        berries.Add(new Pixel(random.OnScreen(border: 0, Console.WindowWidth, Console.WindowHeight), Color.Red));
+        berries.Add(new Pixel(random.OnScreen(border: 0, boardSize), KnownColor.Red));
     }
 }
 
@@ -179,15 +181,15 @@ static void DrawPixel(Pixel pixel)
     Console.SetCursorPosition(0, Console.WindowHeight - 1);
 }
 
-static ConsoleColor MapToConsoleColor(Color color)
+static ConsoleColor MapToConsoleColor(KnownColor color)
     => color switch
     {
-        Color.Black => ConsoleColor.Black,
-        Color.White => ConsoleColor.White,
-        Color.Red => ConsoleColor.Red,
-        Color.Blue => ConsoleColor.Blue,
-        Color.Green => ConsoleColor.Green,
-        Color.DarkBlue => ConsoleColor.DarkBlue,
-        Color.DarkGreen => ConsoleColor.DarkGreen,
+        KnownColor.Black => ConsoleColor.Black,
+        KnownColor.White => ConsoleColor.White,
+        KnownColor.Red => ConsoleColor.Red,
+        KnownColor.Blue => ConsoleColor.Blue,
+        KnownColor.Green => ConsoleColor.Green,
+        KnownColor.DarkBlue => ConsoleColor.DarkBlue,
+        KnownColor.DarkGreen => ConsoleColor.DarkGreen,
         _ => throw new NotSupportedException("Unexpected color to draw!"),
     };

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Drawing;
 
 namespace Snakes;
 
@@ -18,8 +19,7 @@ public interface IPlayer : IGrainWithStringKey
 public class Player
 {
     private readonly List<Pixel> _body = new List<Pixel>(5);
-    private readonly int _boardWidth;
-    private readonly int _boardHeight;
+    private readonly Size _boardSize;
     private Pixel? _last;
 
     public Pixel Head
@@ -28,12 +28,11 @@ public class Player
         set => _body[0] = value;
     }
 
-    public Player(Random random, Color headColor, Color bodyColor, int boardWidth, int boardHeight)
+    public Player(Random random, KnownColor headColor, KnownColor bodyColor, Size boardSize)
     {
-        _boardWidth = boardWidth;
-        _boardHeight = boardHeight;
+        _boardSize = boardSize;
         Direction = (Direction)random.Next(4);
-        _body.Add(new Pixel(random.OnScreen(border: 5, _boardWidth, _boardHeight), headColor));
+        _body.Add(new Pixel(random.OnScreen(border: 5, _boardSize), headColor));
         var pixel = Head;
         for (int i = 0; i < 4; i++)
         {
@@ -64,8 +63,8 @@ public class Player
 
         if (Head.Location.X < 0
             || Head.Location.Y < 0
-            || Head.Location.X >= _boardWidth
-            || Head.Location.Y >= _boardHeight)
+            || Head.Location.X >= _boardSize.Width
+            || Head.Location.Y >= _boardSize.Height)
         {
             return false;
         }

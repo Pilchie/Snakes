@@ -9,9 +9,9 @@ namespace Snakes;
 public class Pixel
 {
     public Point Location { get; }
-    public Color Color { get; }
+    public KnownColor Color { get; }
 
-    public Pixel(Point location, Color color)
+    public Pixel(Point location, KnownColor color)
     {
         Location = location;
         Color = color;
