@@ -5,12 +5,142 @@ using Snakes;
 using System.Diagnostics;
 using System.Drawing;
 
+var originalBg = Console.BackgroundColor;
+var originalFg = Console.ForegroundColor;
+
 try
 {
     using (var client = await ConnectClient())
     {
-        await DoClientWork(client);
-        Console.ReadKey();
+        var players = new List<IPlayer>(5);
+        var berries = new List<Point>(5);
+
+        var game = client.GetGrain<IGame>(Guid.Empty);
+        var boardSize = new Size(Console.WindowWidth, Console.WindowHeight - 1);
+        await game.SetBoardSize(boardSize);
+
+        var self = client.GetGrain<IPlayer>("Pilchie");
+        players.Add(self);
+        berries.Add(Random.Shared.OnScreen(0, boardSize));
+
+        for (int i = 0; i < 4; i++)
+        {
+            players.Add(client.GetGrain<IPlayer>(i.ToString("g")));
+            berries.Add(Random.Shared.OnScreen(0, boardSize));
+        }
+
+        await Task.WhenAll(players.Select(p => p.JoinGame(game)));
+
+        Console.BackgroundColor = ConsoleColor.Black;
+
+        while (await self.IsAlive() && players.Count > 1)
+        {
+            Console.Clear();
+            DrawAt(new Point(0, boardSize.Height), KnownColor.White, $"Score: {await self.GetScore()}", boardSize);
+
+            foreach (var b in berries)
+            {
+                DrawPixel(b, KnownColor.Red, boardSize);
+            }
+
+            await DrawPlayer(self, KnownColor.Blue, KnownColor.DarkBlue, boardSize);
+            foreach (var p in players.Skip(1))
+            {
+                await DrawPlayer(p, KnownColor.Green, KnownColor.DarkGreen, boardSize);
+            }
+
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 200)
+            {
+                if (Console.KeyAvailable)
+                {
+                    var key = Console.ReadKey(true).Key;
+                    if (key == ConsoleKey.LeftArrow)
+                    {
+                        await self.TurnLeft();
+                    }
+                    else if (key == ConsoleKey.RightArrow)
+                    {
+                        await self.TurnRight();
+                    }
+                }
+            }
+
+            foreach (var p in players.Skip(1))
+            {
+                var r = Random.Shared.Next(10);
+                if (r == 0)
+                {
+                    await p.TurnLeft();
+                }
+                else if (r == 1)
+                {
+                    await p.TurnRight();
+                }
+            }
+
+            var playersToRemove = new List<IPlayer>();
+            var berriesToRemove = new List<Point>();
+
+            foreach (var p in players)
+            {
+                if (!(await p.Advance()))
+                {
+                    playersToRemove.Add(p);
+                }
+            }
+
+            foreach (var p in players)
+            {
+                var head = await p.GetHead();
+                foreach (var b in berries)
+                {
+                    if (head == b)
+                    {
+                        await p.FoundBerry();
+                        berriesToRemove.Add(b);
+                    }
+                }
+
+                foreach (var p2 in players)
+                {
+                    var p2Body = await p2.GetBody();
+                    if (p != p2)
+                    {
+                        if (head == p2Body[0])
+                        {
+                            playersToRemove.Add(p);
+                        }
+                    }
+
+                    foreach (var b in p2Body.Skip(1))
+                    {
+                        if (head == b)
+                        {
+                            playersToRemove.Add(p);
+                        }
+                    }
+                }
+            }
+
+            foreach (var p in playersToRemove)
+            {
+                players.Remove(p);
+                await p.Die();
+            }
+
+            foreach (var b in berriesToRemove)
+            {
+                berries.Remove(b);
+            }
+
+            for (int i = 0; i < players.Count - berries.Count; i++)
+            {
+                berries.Add(Random.Shared.OnScreen(border: 0, boardSize));
+            }
+        }
+
+        DrawAt(new Point(5, boardSize.Height - 5), KnownColor.White, $"GAME OVER! Your score was: {await self.GetScore()}.  You {(await self.IsAlive() ? "won!" : "lost :'(")}", boardSize);
     }
 }
 catch (Exception e)
@@ -20,6 +150,11 @@ catch (Exception e)
     Console.WriteLine("\nPress any key to exit.");
     Console.ReadKey();
     return;
+}
+finally
+{
+    Console.BackgroundColor = originalBg;
+    Console.ForegroundColor = originalFg;
 }
 
 static async Task<IClusterClient> ConnectClient()
@@ -40,138 +175,19 @@ static async Task<IClusterClient> ConnectClient()
     return client;
 }
 
-static async Task DoClientWork(IClusterClient client)
+static async Task DrawPlayer(IPlayer player, KnownColor headColor, KnownColor tailColor, Size boardSize)
 {
-    // example of calling grains from the initialized client
-    var player = client.GetGrain<IPlayer>("Pilchie");
-    var response = await player.Advance();
-    Console.WriteLine($"\n\n{response}\n\n");
-}
+    var body = await player.GetBody();
+    DrawPixel(body.First(), headColor, boardSize);
 
-var players = new List<Player>();
-var berries = new List<Pixel>();
-
-var random = new Random();
-var boardSize = new Size(Console.WindowWidth, Console.WindowHeight - 1);
-var self = new Player(random, KnownColor.Blue, KnownColor.DarkBlue, boardSize);
-players.Add(self);
-berries.Add(new Pixel(random.OnScreen(0, boardSize), KnownColor.Red));
-
-for (int i = 0; i < 4; i++)
-{
-    players.Add(new Player(random, KnownColor.Green, KnownColor.DarkGreen, boardSize));
-    berries.Add(new Pixel(random.OnScreen(0, boardSize), KnownColor.Red));
-}
-
-var originalBg = Console.BackgroundColor;
-var originalFg = Console.ForegroundColor;
-Console.BackgroundColor = ConsoleColor.Black;
-
-while (self.IsAlive && players.Count > 1)
-{
-    Console.Clear();
-    DrawAt(new Point(0, boardSize.Height), KnownColor.White, $"Score: {self.Score}", boardSize);
-
-    foreach (var b in berries)
+    foreach (var px in body.Skip(1))
     {
-        DrawPixel(b, boardSize);
-    }
-
-    foreach (var p in players)
-    {
-        foreach (var px in p.Body)
-        {
-            DrawPixel(px, boardSize);
-        }
-    }
-
-    var sw = Stopwatch.StartNew();
-    while (sw.ElapsedMilliseconds < 200)
-    {
-        if (Console.KeyAvailable)
-        {
-            var key = Console.ReadKey(true).Key;
-            if (key == ConsoleKey.LeftArrow)
-            {
-                self.TurnLeft();
-            }
-            else if (key == ConsoleKey.RightArrow)
-            {
-                self.TurnRight();
-            }
-        }
-    }
-
-    foreach (var p in players.Skip(1))
-    {
-        var r = random.Next(10);
-        if (r == 0)
-        {
-            p.TurnLeft();
-        }
-        else if (r == 1)
-        {
-            p.TurnRight();
-        }
-    }
-
-    var playersToRemove = new List<Player>();
-    var berriesToRemove = new List<Pixel>();
-
-    foreach (var p in players)
-    {
-        if (!p.Advance())
-        {
-            playersToRemove.Add(p);
-        }
-    }
-
-    foreach (var p in players)
-    {
-        foreach (var b in berries)
-        {
-            if (p.Head.Location == b.Location)
-            {
-                p.FoundBerry();
-                berriesToRemove.Add(b);
-            }
-        }
-
-        foreach (var p2 in players)
-        {
-            foreach (var b in p2.Body.Skip(1))
-            {
-                if (p.Head.Location == b.Location)
-                {
-                    playersToRemove.Add(p);
-                }
-            }
-        }
-    }
-
-    foreach (var p in playersToRemove)
-    {
-        players.Remove(p);
-        p.IsAlive = false;
-    }
-
-    foreach (var b in berriesToRemove)
-    {
-        berries.Remove(b);
-    }
-
-    for (int i = 0; i < players.Count - berries.Count; i++)
-    {
-        berries.Add(new Pixel(random.OnScreen(border: 0, boardSize), KnownColor.Red));
+        DrawPixel(px, tailColor, boardSize);
     }
 }
 
-DrawAt(new Point(5, boardSize.Height - 5), KnownColor.White, $"GAME OVER! Your score was: {self.Score}.  You {(self.IsAlive ? "won!" : "lost :'(")}", boardSize);
-Console.BackgroundColor = originalBg;
-Console.ForegroundColor = originalFg;
-
-static void DrawPixel(Pixel pixel, Size boardSize)
-    => DrawAt(pixel.Location, pixel.Color, "█", boardSize);
+static void DrawPixel(Point location, KnownColor color, Size boardSize)
+    => DrawAt(location, color, "█", boardSize);
 
 static void DrawAt(Point location, KnownColor color, string value, Size boardSize)
 {
