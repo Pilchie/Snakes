@@ -19,5 +19,5 @@ public class GameGrain : Grain, IGame
     }
 
     public Task<Size> GetBoardSize()
-        => Task.FromResult(new Size(Console.WindowWidth, Console.WindowHeight - 1));
+        => Task.FromResult(new Size(Console.WindowWidth, Console.WindowHeight));
 }

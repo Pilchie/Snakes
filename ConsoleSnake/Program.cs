@@ -16,7 +16,7 @@ try
         var berries = new List<Point>(5);
 
         var game = client.GetGrain<IGame>(Guid.Empty);
-        var boardSize = new Size(Console.WindowWidth, Console.WindowHeight - 1);
+        var boardSize = new Size(Console.WindowWidth - 2, Console.WindowHeight - 2);
         await game.SetBoardSize(boardSize);
 
         var self = client.GetGrain<IPlayer>("Pilchie");
@@ -36,6 +36,7 @@ try
         while (await self.IsAlive() && players.Count > 1)
         {
             Console.Clear();
+            DrawBorder(boardSize);
             DrawAt(new Point(0, boardSize.Height), KnownColor.White, $"Score: {await self.GetScore()}", boardSize);
 
             foreach (var b in berries)
@@ -191,10 +192,25 @@ static void DrawPixel(Point location, KnownColor color, Size boardSize)
 
 static void DrawAt(Point location, KnownColor color, string value, Size boardSize)
 {
-    Console.SetCursorPosition(location.X, location.Y);
+    Console.SetCursorPosition(location.X + 1, location.Y + 1);
     Console.ForegroundColor = MapToConsoleColor(color);
     Console.Write(value);
     Console.SetCursorPosition(0, boardSize.Height);
+}
+
+static void DrawBorder(Size boardSize)
+{
+    for (int x = -1; x < boardSize.Width + 1; x++)
+    {
+        DrawPixel(new Point(x, -1), KnownColor.White, boardSize);
+        //DrawPixel(new Point(x, boardSize.Height), KnownColor.White, boardSize);
+    }
+
+    for (int y = 0; y < boardSize.Height; y++)
+    {
+        DrawPixel(new Point(-1, y), KnownColor.White, boardSize);
+        DrawPixel(new Point(boardSize.Width, y), KnownColor.White, boardSize);
+    }
 }
 
 static ConsoleColor MapToConsoleColor(KnownColor color)
