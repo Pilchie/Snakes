@@ -19,6 +19,10 @@ public class PlayerGrain : Grain, IPlayer
 
     public async Task JoinGame(IGame game)
     {
+        _body.Clear();
+        _last = null;
+        _isAlive = true;
+
         _boardSize = await game.GetBoardSize();
         _direction = (Direction)Random.Shared.Next(4);
         _body.Add(Random.Shared.OnScreen(border: 5, _boardSize));
