@@ -1,5 +1,8 @@
 ﻿using System.Drawing;
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace Snakes;
 
@@ -47,4 +50,15 @@ public static class Extensions
             Direction.Left => Direction.Right,
             _ => throw new InvalidOperationException("What direction are we going???"),
         };
+
+    public static async IAsyncEnumerable<Task<T>> InOrderOfCompletion<T>(this IEnumerable<Task<T>> tasks)
+    {
+        var list = tasks.ToList();
+        while (list.Any())
+        {
+            var t = await Task.WhenAny(list);
+            list.Remove(t);
+            yield return t;
+        }
+    }
 }

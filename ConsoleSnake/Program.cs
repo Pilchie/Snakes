@@ -11,45 +11,34 @@ using Color = Spectre.Console.Color;
 ;
 var originalBg = AnsiConsole.Background;
 var originalFg = AnsiConsole.Foreground;
+AnsiConsole.Background = Color.Black;
 
 try
 {
     using (var client = await ConnectClient())
     {
-        var players = new List<IPlayer>(5);
-        var berries = new List<Point>(5);
-
         var game = client.GetGrain<IGame>(Guid.Empty);
         var boardSize = new Size(AnsiConsole.Profile.Width - 2, AnsiConsole.Profile.Height - 3);
-        await game.SetBoardSize(boardSize);
+        await game.InitializeNewGame(boardSize);
 
         var self = client.GetGrain<IPlayer>("Pilchie");
-        players.Add(self);
-        berries.Add(Random.Shared.OnScreen(0, boardSize));
+        await self.JoinGame(game);
+        await game.Start();
 
-        for (int i = 0; i < 4; i++)
-        {
-            players.Add(client.GetGrain<IPlayer>(i.ToString("g")));
-            berries.Add(Random.Shared.OnScreen(0, boardSize));
-        }
-
-        await Task.WhenAll(players.Select(p => p.JoinGame(game)));
-
-        AnsiConsole.Background = Color.Black;
-
-        while (await self.IsAlive() && players.Count > 1)
+        while (await self.IsAlive() && await game.IsInProgress())
         {
             var canvas = new Canvas(boardSize.Width + 2, boardSize.Height + 2);
             DrawBorder(canvas);
 
             canvas.PixelWidth = 1;
 
-            foreach (var b in berries)
+            foreach (var b in await game.GetBerryPositions())
             {
                 canvas.SetPixel(b.X + 1, b.Y + 1, Color.Red);
             }
 
             await DrawPlayer(canvas, self, Color.Blue, Color.DarkBlue);
+            var players = await game.GetPlayers();
             foreach (var p in players.Skip(1))
             {
                 await DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
@@ -72,78 +61,7 @@ try
                 }
             }
 
-            foreach (var p in players.Skip(1))
-            {
-                var r = Random.Shared.Next(10);
-                if (r == 0)
-                {
-                    await p.TurnLeft();
-                }
-                else if (r == 1)
-                {
-                    await p.TurnRight();
-                }
-            }
-
-            var playersToRemove = new List<IPlayer>();
-            var berriesToRemove = new List<Point>();
-
-            foreach (var p in players)
-            {
-                if (!(await p.Advance()))
-                {
-                    playersToRemove.Add(p);
-                }
-            }
-
-            foreach (var p in players)
-            {
-                var head = await p.GetHead();
-                foreach (var b in berries)
-                {
-                    if (head == b)
-                    {
-                        await p.FoundBerry();
-                        berriesToRemove.Add(b);
-                    }
-                }
-
-                foreach (var p2 in players)
-                {
-                    var p2Body = await p2.GetBody();
-                    if (p != p2)
-                    {
-                        if (head == p2Body[0])
-                        {
-                            playersToRemove.Add(p);
-                        }
-                    }
-
-                    foreach (var b in p2Body.Skip(1))
-                    {
-                        if (head == b)
-                        {
-                            playersToRemove.Add(p);
-                        }
-                    }
-                }
-            }
-
-            foreach (var p in playersToRemove)
-            {
-                players.Remove(p);
-                await p.Die();
-            }
-
-            foreach (var b in berriesToRemove)
-            {
-                berries.Remove(b);
-            }
-
-            for (int i = 0; i < players.Count - berries.Count; i++)
-            {
-                berries.Add(Random.Shared.OnScreen(border: 0, boardSize));
-            }
+            await game.PlayRound();
 
             AnsiConsole.Cursor.SetPosition(0, 0);
             AnsiConsole.Write(canvas);
