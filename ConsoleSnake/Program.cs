@@ -8,8 +8,9 @@ using System.Drawing;
 
 using Color = Spectre.Console.Color;
 
-var originalBg = Console.BackgroundColor;
-var originalFg = Console.ForegroundColor;
+;
+var originalBg = AnsiConsole.Background;
+var originalFg = AnsiConsole.Foreground;
 
 try
 {
@@ -19,7 +20,7 @@ try
         var berries = new List<Point>(5);
 
         var game = client.GetGrain<IGame>(Guid.Empty);
-        var boardSize = new Size(Console.WindowWidth - 2, Console.WindowHeight - 3);
+        var boardSize = new Size(AnsiConsole.Profile.Width - 2, AnsiConsole.Profile.Height - 3);
         await game.SetBoardSize(boardSize);
 
         var self = client.GetGrain<IPlayer>("Pilchie");
@@ -157,16 +158,16 @@ try
 }
 catch (Exception e)
 {
-    Console.WriteLine($"\nException while trying to run client: {e.Message}");
-    Console.WriteLine("Make sure the silo the client is trying to connect to is running.");
-    Console.WriteLine("\nPress any key to exit.");
+    AnsiConsole.WriteLine($"\nException while trying to run client: {e.Message}");
+    AnsiConsole.WriteLine("Make sure the silo the client is trying to connect to is running.");
+    AnsiConsole.WriteLine("\nPress any key to exit.");
     Console.ReadKey();
     return;
 }
 finally
 {
-    Console.BackgroundColor = originalBg;
-    Console.ForegroundColor = originalFg;
+    AnsiConsole.Background = originalBg;
+    AnsiConsole.Foreground = originalFg;
 }
 
 static async Task<IClusterClient> ConnectClient()
@@ -183,7 +184,7 @@ static async Task<IClusterClient> ConnectClient()
         .Build();
 
     await client.Connect();
-    Console.WriteLine("Client successfully connected to silo host \n");
+    AnsiConsole.WriteLine("Client successfully connected to silo host \n");
     return client;
 }
 
