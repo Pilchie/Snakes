@@ -2,8 +2,11 @@
 using Orleans;
 using Orleans.Configuration;
 using Snakes;
+using Spectre.Console;
 using System.Diagnostics;
 using System.Drawing;
+
+using Color = Spectre.Console.Color;
 
 var originalBg = Console.BackgroundColor;
 var originalFg = Console.ForegroundColor;
@@ -16,7 +19,7 @@ try
         var berries = new List<Point>(5);
 
         var game = client.GetGrain<IGame>(Guid.Empty);
-        var boardSize = new Size(Console.WindowWidth - 2, Console.WindowHeight - 2);
+        var boardSize = new Size(Console.WindowWidth - 2, Console.WindowHeight - 3);
         await game.SetBoardSize(boardSize);
 
         var self = client.GetGrain<IPlayer>("Pilchie");
@@ -31,23 +34,24 @@ try
 
         await Task.WhenAll(players.Select(p => p.JoinGame(game)));
 
-        Console.BackgroundColor = ConsoleColor.Black;
+        AnsiConsole.Background = Color.Black;
 
         while (await self.IsAlive() && players.Count > 1)
         {
-            Console.Clear();
-            DrawBorder(boardSize);
-            DrawAt(new Point(0, boardSize.Height), KnownColor.White, $"Score: {await self.GetScore()}", boardSize);
+            var canvas = new Canvas(boardSize.Width + 2, boardSize.Height + 2);
+            DrawBorder(canvas);
+
+            canvas.PixelWidth = 1;
 
             foreach (var b in berries)
             {
-                DrawPixel(b, KnownColor.Red, boardSize);
+                canvas.SetPixel(b.X + 1, b.Y + 1, Color.Red);
             }
 
-            await DrawPlayer(self, KnownColor.Blue, KnownColor.DarkBlue, boardSize);
+            await DrawPlayer(canvas, self, Color.Blue, Color.DarkBlue);
             foreach (var p in players.Skip(1))
             {
-                await DrawPlayer(p, KnownColor.Green, KnownColor.DarkGreen, boardSize);
+                await DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
             }
 
             var sw = Stopwatch.StartNew();
@@ -139,9 +143,16 @@ try
             {
                 berries.Add(Random.Shared.OnScreen(border: 0, boardSize));
             }
+
+            AnsiConsole.Cursor.SetPosition(0, 0);
+            AnsiConsole.Write(canvas);
+            AnsiConsole.Cursor.SetPosition(1, boardSize.Height + 2);
+            AnsiConsole.Markup($"[black on white]Score: {await self.GetScore()}[/]");
+            AnsiConsole.Cursor.SetPosition(0, 0);
         }
 
-        DrawAt(new Point(5, boardSize.Height - 5), KnownColor.White, $"GAME OVER! Your score was: {await self.GetScore()}.  You {(await self.IsAlive() ? "won!" : "lost :'(")}", boardSize);
+        AnsiConsole.Cursor.SetPosition(5, boardSize.Height - 5);
+        AnsiConsole.MarkupLine($"[bold yellow on blue]GAME OVER! Your score was: {await self.GetScore()}.  You {(await self.IsAlive() ? "won!" : "lost :'(")}[/]");
     }
 }
 catch (Exception e)
@@ -176,52 +187,29 @@ static async Task<IClusterClient> ConnectClient()
     return client;
 }
 
-static async Task DrawPlayer(IPlayer player, KnownColor headColor, KnownColor tailColor, Size boardSize)
+static async Task DrawPlayer(Canvas canvas, IPlayer player, Color headColor, Color tailColor)
 {
     var body = await player.GetBody();
-    DrawPixel(body.First(), headColor, boardSize);
+    var head = body.First();
+    canvas.SetPixel(head.X + 1, head.Y + 1, headColor);
 
     foreach (var px in body.Skip(1))
     {
-        DrawPixel(px, tailColor, boardSize);
+        canvas.SetPixel(px.X + 1, px.Y + 1, tailColor);
     }
 }
 
-static void DrawPixel(Point location, KnownColor color, Size boardSize)
-    => DrawAt(location, color, "█", boardSize);
-
-static void DrawAt(Point location, KnownColor color, string value, Size boardSize)
+static void DrawBorder(Canvas canvas)
 {
-    Console.SetCursorPosition(location.X + 1, location.Y + 1);
-    Console.ForegroundColor = MapToConsoleColor(color);
-    Console.Write(value);
-    Console.SetCursorPosition(0, boardSize.Height);
-}
-
-static void DrawBorder(Size boardSize)
-{
-    for (int x = -1; x < boardSize.Width + 1; x++)
+    for (int x = 0; x < canvas.Width; x++)
     {
-        DrawPixel(new Point(x, -1), KnownColor.White, boardSize);
-        //DrawPixel(new Point(x, boardSize.Height), KnownColor.White, boardSize);
+        canvas.SetPixel(x, 0, Color.White);
+        canvas.SetPixel(x, canvas.Height - 1, Color.White);
     }
 
-    for (int y = 0; y < boardSize.Height; y++)
+    for (int y = 1; y < canvas.Height - 1; y++)
     {
-        DrawPixel(new Point(-1, y), KnownColor.White, boardSize);
-        DrawPixel(new Point(boardSize.Width, y), KnownColor.White, boardSize);
+        canvas.SetPixel(0, y, Color.White);
+        canvas.SetPixel(canvas.Width - 1, y, Color.White);
     }
 }
-
-static ConsoleColor MapToConsoleColor(KnownColor color)
-    => color switch
-    {
-        KnownColor.Black => ConsoleColor.Black,
-        KnownColor.White => ConsoleColor.White,
-        KnownColor.Red => ConsoleColor.Red,
-        KnownColor.Blue => ConsoleColor.Blue,
-        KnownColor.Green => ConsoleColor.Green,
-        KnownColor.DarkBlue => ConsoleColor.DarkBlue,
-        KnownColor.DarkGreen => ConsoleColor.DarkGreen,
-        _ => throw new NotSupportedException("Unexpected color to draw!"),
-    };
