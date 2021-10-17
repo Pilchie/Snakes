@@ -36,6 +36,7 @@ public class GameGrain : Grain, IGame
         for (int i = 0; i < 4; i++)
         {
             var p = GrainFactory.GetGrain<IPlayer>(i.ToString("g"));
+            await p.SetHumanControlled(false);
             await p.JoinGame(this);
         }
 
@@ -68,16 +69,19 @@ public class GameGrain : Grain, IGame
 
     public async Task PlayRound()
     {
-        foreach (var p in _players.Skip(1))
+        foreach (var p in _players)
         {
-            var r = Random.Shared.Next(10);
-            if (r == 0)
+            if (!await p.IsHumanControlled())
             {
-                await p.TurnLeft();
-            }
-            else if (r == 1)
-            {
-                await p.TurnRight();
+                var r = Random.Shared.Next(10);
+                if (r == 0)
+                {
+                    await p.TurnLeft();
+                }
+                else if (r == 1)
+                {
+                    await p.TurnRight();
+                }
             }
         }
 

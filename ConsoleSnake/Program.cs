@@ -22,6 +22,7 @@ try
         await game.InitializeNewGame(boardSize);
 
         var self = client.GetGrain<IPlayer>("Pilchie");
+        await self.SetHumanControlled(true);
         await self.JoinGame(game);
         await game.Start();
 
@@ -37,11 +38,21 @@ try
                 canvas.SetPixel(b.X + 1, b.Y + 1, Color.Red);
             }
 
-            await DrawPlayer(canvas, self, Color.Blue, Color.DarkBlue);
             var players = await game.GetPlayers();
-            foreach (var p in players.Skip(1))
+            foreach (var p in players)
             {
-                await DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
+                if (p.GetPrimaryKeyString() == self.GetPrimaryKeyString())
+                {
+                    await DrawPlayer(canvas, p, Color.Blue, Color.DarkBlue);
+                }
+                else if (await p.IsHumanControlled())
+                {
+                    await DrawPlayer(canvas, p, Color.Orange1, Color.DarkOrange);
+                }
+                else
+                {
+                    await DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
+                }
             }
 
             var sw = Stopwatch.StartNew();

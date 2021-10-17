@@ -29,4 +29,7 @@ public interface IPlayer : IGrainWithStringKey
     Task<IList<Point>> GetBody();
 
     Task<Point> GetHead();
+
+    Task<bool> IsHumanControlled();
+    Task SetHumanControlled(bool humanControlled);
 }

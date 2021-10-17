@@ -15,6 +15,7 @@ public class PlayerGrain : Grain, IPlayer
     private Point? _last;
     private int _score;
     private bool _isAlive = true;
+    private bool _humanControlled;
     private Direction _direction;
 
     public async Task JoinGame(IGame game)
@@ -106,4 +107,13 @@ public class PlayerGrain : Grain, IPlayer
 
     public Task<IList<Point>> GetBody()
         => Task.FromResult<IList<Point>>(_body);
+
+    public Task<bool> IsHumanControlled()
+        => Task.FromResult(_humanControlled);
+
+    public Task SetHumanControlled(bool humanControlled)
+    {
+        _humanControlled = humanControlled;
+        return Task.CompletedTask;
+    }
 }
