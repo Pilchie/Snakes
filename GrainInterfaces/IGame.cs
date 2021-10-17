@@ -9,7 +9,7 @@ public interface IGame : IGrainWithGuidKey
 {
     Task<Size> GetBoardSize();
     Task InitializeNewGame(Size boardSize);
-    Task Start();
+    Task Start(int playerCount);
     Task<bool> IsInProgress();
     Task<IEnumerable<Point>> GetBerryPositions();
     Task AddPlayer(IPlayer player);

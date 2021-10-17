@@ -18,13 +18,57 @@ try
     using (var client = await ConnectClient())
     {
         var game = client.GetGrain<IGame>(Guid.Empty);
+
+        AnsiConsole.Clear();
+        AnsiConsole.WriteLine("Welcome to snekz!");
+        AnsiConsole.WriteLine();
+
+        if (await game.IsInProgress())
+        {
+            AnsiConsole.Write("Game in progress - waiting for it to end");
+        }
+
+        while (await game.IsInProgress())
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+
+        var name = AnsiConsole.Ask<string>("What's your name?");
+        var playerCount = AnsiConsole.Ask<int>("How many players should there be?");
+
         var boardSize = new Size(AnsiConsole.Profile.Width - 2, AnsiConsole.Profile.Height - 3);
         await game.InitializeNewGame(boardSize);
 
-        var self = client.GetGrain<IPlayer>("Pilchie");
+        var self = client.GetGrain<IPlayer>(name);
         await self.SetHumanControlled(true);
         await self.JoinGame(game);
-        await game.Start();
+
+        AnsiConsole.WriteLine("Waiting for other players to join (press any key to start with NPCs for remaining)...");
+        var prevCount = 0;
+        while (prevCount < playerCount)
+        {
+            var currentCount = (await game.GetPlayers()).Count();
+            if (currentCount != prevCount)
+            {
+                AnsiConsole.WriteLine($"\tNow {currentCount} players");
+                prevCount = currentCount;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+            if (Console.KeyAvailable)
+            {
+                Console.ReadKey();
+                break;
+            }
+        }
+
+        for (int i = 3; i > 0; i--)
+        {
+            AnsiConsole.WriteLine($"Starting in {i} seconds");
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+
+        await game.Start(playerCount);
 
         while (await self.IsAlive() && await game.IsInProgress())
         {

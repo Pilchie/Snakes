@@ -26,16 +26,16 @@ public class GameGrain : Grain, IGame
     public Task<Size> GetBoardSize()
         => Task.FromResult(_boardSize);
 
-    public async Task Start()
+    public async Task Start(int playerCount)
     {
-        if (_players.Count != 1)
+        if (!_players.Any())
         {
             throw new InvalidOperationException("No human player when starting");
         }
 
-        for (int i = 0; i < 4; i++)
+        for (int i = _players.Count; i < playerCount; i++)
         {
-            var p = GrainFactory.GetGrain<IPlayer>(i.ToString("g"));
+            var p = GrainFactory.GetGrain<IPlayer>($"AI-ControlledPlayer-{i:g}");
             await p.SetHumanControlled(false);
             await p.JoinGame(this);
         }
@@ -48,14 +48,23 @@ public class GameGrain : Grain, IGame
 
     public async Task<bool> IsInProgress()
     {
-        var aliveTasks = _players.Select(p => p.IsAlive());
-        var count = 0;
-        await foreach (var t in aliveTasks.InOrderOfCompletion())
+        var alive = new List<IPlayer>();
+        foreach (var p in _players)
         {
-            count += await t ? 1 : 0;
-            if (count > 1)
+            if (await p.IsAlive())
             {
-                return true;
+                alive.Add(p);
+            }
+        }
+
+        if (alive.Count > 1)
+        {
+            foreach (var p in alive)
+            {
+                if (await p.IsHumanControlled())
+                {
+                    return true;
+                }
             }
         }
 
