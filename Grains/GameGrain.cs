@@ -11,8 +11,8 @@ namespace Snakes;
 
 public class GameGrain : Grain, IGame
 {
-    private readonly List<Point> _berries = new List<Point>();
-    private readonly List<IPlayer> _players = new List<IPlayer>();
+    private readonly List<Point> _berries = new();
+    private readonly List<IPlayer> _players = new();
     private Size _boardSize;
 
     public Task InitializeNewGame(Size boardSize)

@@ -10,7 +10,7 @@ namespace Snakes;
 
 public class PlayerGrain : Grain, IPlayer
 {
-    private readonly List<Point> _body = new List<Point>(5);
+    private readonly List<Point> _body = new(5);
     private Size _boardSize;
     private Point? _last;
     private int _score;
@@ -51,15 +51,9 @@ public class PlayerGrain : Grain, IPlayer
 
         Head = Head.Move(_direction);
 
-        if (Head.X < 0
-            || Head.Y < 0
-            || Head.X >= _boardSize.Width
-            || Head.Y >= _boardSize.Height)
-        {
-            return Task.FromResult(false);
-        }
-
-        return Task.FromResult(true);
+        return Head.X < 0 || Head.Y < 0 || Head.X >= _boardSize.Width || Head.Y >= _boardSize.Height
+            ? Task.FromResult(false)
+            : Task.FromResult(true);
     }
 
     private Point Head
