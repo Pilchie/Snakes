@@ -65,7 +65,8 @@ public class GameGrain : Grain, IGame
         }
 
         _currentState = GameState.InProgress;
-        var t = Task.Run(async () => await GameLoop(CancellationToken.None));
+
+        RegisterTimer(PlayRound, state: null, dueTime: TimeSpan.FromSeconds(2), period: TimeSpan.FromMilliseconds(200));
     }
 
     public Task<GameState> GetCurrentState()
@@ -103,32 +104,15 @@ public class GameGrain : Grain, IGame
         return Task.FromResult<IEnumerable<Point>>(_berries);
     }
 
-    public async Task<int> PlayRound(int round)
+    public  Task<int> GetCurrentRound()
     {
-        while (_currentState == GameState.InProgress && _currentRound == round)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(10));
-        }
-
-        return _currentRound;
+        return Task.FromResult(_currentRound);
     }
 
-    private async Task GameLoop(CancellationToken cancellationToken)
+    private async Task PlayRound(object state)
     {
-        // Give players a couple of seconds to see the starting notice.
-        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        _currentRound++;
 
-        while (!cancellationToken.IsCancellationRequested && _currentState == GameState.InProgress)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
-
-            await PlayRound();
-            _currentRound++;
-        }
-    }
-
-    private async Task PlayRound()
-    {
         foreach (var p in _players)
         {
             if (!await p.IsHumanControlled())

@@ -117,10 +117,10 @@ try
         AnsiConsole.Markup($"[black on white]Score: {await self.GetScore()}[/]");
         AnsiConsole.Cursor.SetPosition(0, 0);
 
-        var playRoundTask = game.PlayRound(round);
-        while (!playRoundTask.IsCompleted)
+        var prev = round;
+        while (prev == round)
         {
-            playRoundTask.Wait(TimeSpan.FromMilliseconds(10));
+            round = await game.GetCurrentRound();
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true).Key;
@@ -134,8 +134,6 @@ try
                 }
             }
         }
-
-        round = await playRoundTask;
     }
 
     AnsiConsole.Cursor.SetPosition(5, boardSize.Height - 5);
