@@ -9,7 +9,7 @@ COPY ["SnakesSilo/SnakesSilo.csproj", "SnakesSilo/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["Grains/Grains.csproj", "Grains/"]
 RUN dotnet restore "SnakesSilo/SnakesSilo.csproj"
-COPY .. .
+COPY . .
 WORKDIR "/src/SnakesSilo"
 RUN dotnet build "SnakesSilo.csproj" -c Release -o /app/build
 
