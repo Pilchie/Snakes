@@ -22,34 +22,48 @@ try
     AnsiConsole.WriteLine("Welcome to snekz!");
     AnsiConsole.WriteLine();
 
-    if (await game.IsInProgress())
+    if (await game.GetCurrentState() == GameState.InProgress)
     {
         AnsiConsole.Write("Game in progress - waiting for it to end");
     }
 
-    while (await game.IsInProgress())
+    while (await game.GetCurrentState() == GameState.InProgress)
     {
         await Task.Delay(TimeSpan.FromSeconds(1));
     }
 
     var name = AnsiConsole.Ask<string>("What's your name?");
-    var playerCount = AnsiConsole.Ask<int>("How many players should there be?");
-
-    var boardSize = new Size(AnsiConsole.Profile.Width - 2, AnsiConsole.Profile.Height - 3);
-    await game.InitializeNewGame(boardSize);
-
     var self = client.GetGrain<IPlayer>(name);
     await self.SetHumanControlled(true);
-    await self.JoinGame(game);
+
+    var state = await game.GetCurrentState();
+    if (state == GameState.NoGame)
+    {
+        var playerCount = AnsiConsole.Ask<int>("How many players should there be (including NPCs)?");
+        await game.InitializeNewGame(new Size(96, 24), playerCount);
+        await self.JoinGame(game);
+    }
+    else if (state == GameState.Lobby)
+    {
+        await self.JoinGame(game);
+    }
+    else
+    {
+        AnsiConsole.WriteLine($"Game in unpected state {state}. Try running again.");
+        return;
+    }
+
+    var expected = await game.GetExpectedPlayers();
+    var boardSize = await game.GetBoardSize();
 
     AnsiConsole.WriteLine("Waiting for other players to join (press any key to start with NPCs for remaining)...");
     var prevCount = 0;
-    while (prevCount < playerCount)
+    while (prevCount < expected)
     {
         var currentCount = (await game.GetPlayers()).Count();
         if (currentCount != prevCount)
         {
-            AnsiConsole.WriteLine($"\tNow {currentCount} players");
+            AnsiConsole.WriteLine($"\tNow {currentCount}/{expected} players");
             prevCount = currentCount;
         }
 
@@ -57,20 +71,19 @@ try
         if (Console.KeyAvailable)
         {
             Console.ReadKey();
-            break;
+            await game.Start();
         }
     }
 
-    for (int i = 3; i > 0; i--)
+    AnsiConsole.WriteLine("Starting...");
+    var round = 0;
+    while (true)
     {
-        AnsiConsole.WriteLine($"Starting in {i} seconds");
-        await Task.Delay(TimeSpan.FromSeconds(1));
-    }
+        if (await game.GetCurrentState() != GameState.InProgress || !await self.IsAlive())
+        {
+            break;
+        }
 
-    await game.Start(playerCount);
-
-    while (await self.IsAlive() && await game.IsInProgress())
-    {
         var canvas = new Canvas(boardSize.Width + 2, boardSize.Height + 2);
         DrawBorder(canvas);
 
@@ -98,9 +111,16 @@ try
             }
         }
 
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < 200)
+        AnsiConsole.Cursor.SetPosition(0, 0);
+        AnsiConsole.Write(canvas);
+        AnsiConsole.Cursor.SetPosition(1, boardSize.Height + 2);
+        AnsiConsole.Markup($"[black on white]Score: {await self.GetScore()}[/]");
+        AnsiConsole.Cursor.SetPosition(0, 0);
+
+        var playRoundTask = game.PlayRound(round);
+        while (!playRoundTask.IsCompleted)
         {
+            playRoundTask.Wait(TimeSpan.FromMilliseconds(10));
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true).Key;
@@ -115,13 +135,7 @@ try
             }
         }
 
-        await game.PlayRound();
-
-        AnsiConsole.Cursor.SetPosition(0, 0);
-        AnsiConsole.Write(canvas);
-        AnsiConsole.Cursor.SetPosition(1, boardSize.Height + 2);
-        AnsiConsole.Markup($"[black on white]Score: {await self.GetScore()}[/]");
-        AnsiConsole.Cursor.SetPosition(0, 0);
+        round = await playRoundTask;
     }
 
     AnsiConsole.Cursor.SetPosition(5, boardSize.Height - 5);

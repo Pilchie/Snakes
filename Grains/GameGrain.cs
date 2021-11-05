@@ -14,9 +14,20 @@ public class GameGrain : Grain, IGame
     private readonly List<Point> _berries = new();
     private readonly List<IPlayer> _players = new();
     private Size _boardSize;
+    private int _currentRound;
+    private int _expectedPlayers;
+    private GameState _currentState = GameState.NoGame;
 
-    public Task InitializeNewGame(Size boardSize)
+    public Task InitializeNewGame(Size boardSize, int expectedPlayers)
     {
+        if (_currentState != GameState.NoGame)
+        {
+            throw new InvalidOperationException($"Can't transition from '{_currentState}' to '{nameof(GameState.Lobby)}'");
+        }
+
+        _currentState = GameState.Lobby;
+        _currentRound = 0;
+        _expectedPlayers = expectedPlayers;
         _boardSize = boardSize;
         _berries.Clear();
         _players.Clear();
@@ -26,14 +37,22 @@ public class GameGrain : Grain, IGame
     public Task<Size> GetBoardSize()
         => Task.FromResult(_boardSize);
 
-    public async Task Start(int playerCount)
+    public Task<int> GetExpectedPlayers()
+        => Task.FromResult(_expectedPlayers);
+
+    public async Task Start()
     {
+        if (_currentState != GameState.Lobby)
+        {
+            throw new InvalidOperationException($"Can't transition from '{_currentState}' to '{nameof(GameState.InProgress)}'");
+        }
+
         if (!_players.Any())
         {
             throw new InvalidOperationException("No human player when starting");
         }
 
-        for (int i = _players.Count; i < playerCount; i++)
+        for (int i = _players.Count; i < _expectedPlayers; i++)
         {
             var p = GrainFactory.GetGrain<IPlayer>($"AI-ControlledPlayer-{i:g}");
             await p.SetHumanControlled(false);
@@ -44,9 +63,17 @@ public class GameGrain : Grain, IGame
         {
             _berries.Add(Random.Shared.OnScreen(0, _boardSize));
         }
+
+        _currentState = GameState.InProgress;
+        var t = Task.Run(async () => await GameLoop(CancellationToken.None));
     }
 
-    public async Task<bool> IsInProgress()
+    public Task<GameState> GetCurrentState()
+    {
+        return Task.FromResult(_currentState);
+    }
+
+    private async Task<bool> IsInProgress()
     {
         var alive = new List<IPlayer>();
         foreach (var p in _players)
@@ -76,7 +103,31 @@ public class GameGrain : Grain, IGame
         return Task.FromResult<IEnumerable<Point>>(_berries);
     }
 
-    public async Task PlayRound()
+    public async Task<int> PlayRound(int round)
+    {
+        while (_currentState == GameState.InProgress && _currentRound == round)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+
+        return _currentRound;
+    }
+
+    private async Task GameLoop(CancellationToken cancellationToken)
+    {
+        // Give players a couple of seconds to see the starting notice.
+        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+
+        while (!cancellationToken.IsCancellationRequested && _currentState == GameState.InProgress)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+
+            await PlayRound();
+            _currentRound++;
+        }
+    }
+
+    private async Task PlayRound()
     {
         foreach (var p in _players)
         {
@@ -152,6 +203,11 @@ public class GameGrain : Grain, IGame
         for (int i = 0; i < _players.Count - _berries.Count; i++)
         {
             _berries.Add(Random.Shared.OnScreen(border: 0, _boardSize));
+        }
+
+        if (!await IsInProgress())
+        {
+            _currentState = GameState.NoGame;
         }
     }
 
