@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SnakesSilo": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
