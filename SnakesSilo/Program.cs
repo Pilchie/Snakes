@@ -31,7 +31,7 @@ static async Task<ISiloHost> StartSilo()
             options.ServiceId = "Snakes";
         })
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
-        .ConfigureLogging(logging => logging.AddConsole());
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddConsole());
 
     var host = builder.Build();
     await host.StartAsync();

@@ -163,7 +163,7 @@ static async Task<IClusterClient> ConnectClient()
             options.ClusterId = "dev";
             options.ServiceId = "Snakes";
         })
-        .ConfigureLogging(logging => logging.AddConsole())
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddConsole())
         .Build();
 
     await client.Connect();
