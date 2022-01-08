@@ -5,16 +5,16 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["SnakesSilo.csproj", "SnakesSilo/"]
-COPY ["../GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
-COPY ["../Grains/Grains.csproj", "Grains/"]
+COPY ["SnakesSilo/SnakesSilo.csproj", "SnakesSilo/"]
+COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
+COPY ["Grains/Grains.csproj", "Grains/"]
 RUN dotnet restore "SnakesSilo/SnakesSilo.csproj"
 COPY . .
 WORKDIR "/src/SnakesSilo"
-RUN dotnet build "SnakesSilo/SnakesSilo.csproj" -c Release -o /app/build
+RUN dotnet build "SnakesSilo.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "SnakesSilo/SnakesSilo.csproj" -c Release -o /app/publish
+RUN dotnet publish "SnakesSilo.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
