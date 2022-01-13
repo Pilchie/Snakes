@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Orleans;
-using Orleans.Configuration;
-using Snakes;
+﻿using Snakes;
 using Spectre.Console;
 using System.Diagnostics;
 using System.Drawing;
@@ -15,7 +12,6 @@ AnsiConsole.Background = Color.Black;
 
 try
 {
-    using var client = await ConnectClient();
     var game = client.GetGrain<IGame>(Guid.Empty);
 
     AnsiConsole.Clear();
@@ -151,24 +147,6 @@ finally
 {
     AnsiConsole.Background = originalBg;
     AnsiConsole.Foreground = originalFg;
-}
-
-static async Task<IClusterClient> ConnectClient()
-{
-    IClusterClient client;
-    client = new ClientBuilder()
-        .UseLocalhostClustering()
-        .Configure<ClusterOptions>(options =>
-        {
-            options.ClusterId = "dev";
-            options.ServiceId = "Snakes";
-        })
-        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddConsole())
-        .Build();
-
-    await client.Connect();
-    AnsiConsole.WriteLine("Client successfully connected to silo host \n");
-    return client;
 }
 
 static async Task DrawPlayer(Canvas canvas, IPlayer player, Color headColor, Color tailColor)
