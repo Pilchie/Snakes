@@ -1,7 +1,8 @@
-using HubAndHost.Hubs;
 using Microsoft.AspNetCore.ResponseCompression;
 using Orleans.Configuration;
 using Orleans;
+using Snakes;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSignalR();
@@ -11,7 +12,6 @@ builder.Services.AddResponseCompression(opts
 
 var client = await ConnectClient();
 builder.Services.AddSingleton(client);
-
 var app = builder.Build();
 
 app.UseResponseCompression();

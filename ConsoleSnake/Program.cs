@@ -1,6 +1,7 @@
-﻿using Snakes;
+﻿using Microsoft.AspNetCore.SignalR.Client;
+using Snakes;
 using Spectre.Console;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Drawing;
 
 using Color = Spectre.Console.Color;
@@ -10,130 +11,126 @@ var originalBg = AnsiConsole.Background;
 var originalFg = AnsiConsole.Foreground;
 AnsiConsole.Background = Color.Black;
 
+var gameState = GameState.NoGame;
+var currentPlayers = 0;
+var expectedPlayers = 0;
+var boardSize = Size.Empty;
+var alive = true;
+var score = 0;
+var id = "";
 try
 {
-    var game = client.GetGrain<IGame>(Guid.Empty);
+    var hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:7193/snakehub")
+            .Build();
 
+    hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => expectedPlayers = newCount);
+    hubConnection.On<GameState>("OnStateChanged", state =>
+    {
+        switch (state)
+        {
+            case GameState.NoGame:
+                AnsiConsole.WriteLine("Ended");
+                break;
+            case GameState.Lobby:
+                AnsiConsole.WriteLine("Waiting for more players to join");
+
+                break;
+            case GameState.InProgress:
+                if (gameState == GameState.Lobby)
+                {
+                    AnsiConsole.WriteLine("Starting");
+                }
+                else if (gameState == GameState.NoGame)
+                {
+                    AnsiConsole.WriteLine("Game in progress, waiting for it to end");
+                }
+                break;
+        }
+        gameState = state;
+
+    });
+    hubConnection.On<int>("OnPlayerJoined", count =>
+    {
+        currentPlayers = count;
+        AnsiConsole.WriteLine($"Now {count} players");
+    });
+    hubConnection.On<Size>("OnBoardSizeChanged", size => boardSize = size);
+    hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", DisplayRound);
+
+    hubConnection.On<string>("OnDied", id => alive = false);
+    hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => score = newScore);
+    await hubConnection.StartAsync();
     AnsiConsole.Clear();
     AnsiConsole.WriteLine("Welcome to snekz!");
     AnsiConsole.WriteLine();
 
-    if (await game.GetCurrentState() == GameState.InProgress)
-    {
-        AnsiConsole.Write("Game in progress - waiting for it to end");
-    }
-
-    while (await game.GetCurrentState() == GameState.InProgress)
-    {
-        await Task.Delay(TimeSpan.FromSeconds(1));
-    }
-
     var name = AnsiConsole.Ask<string>("What's your name?");
-    var self = client.GetGrain<IPlayer>(name);
-    await self.SetHumanControlled(true);
 
-    var state = await game.GetCurrentState();
-    if (state == GameState.NoGame)
+    gameState = await hubConnection.InvokeAsync<GameState>("GetCurrentState");
+    if (gameState == GameState.NoGame)
     {
-        var playerCount = AnsiConsole.Ask<int>("How many players should there be (including NPCs)?");
-        await game.InitializeNewGame(new Size(96, 24), playerCount);
-        await self.JoinGame(game);
+        var desiredCount = AnsiConsole.Ask<int>("How many players should there be (including NPCs)?");
+        await hubConnection.InvokeAsync("InitializeNewGame", new Size(96, 24), desiredCount);
+        id = await hubConnection.InvokeAsync<string>("JoinGame", name);
     }
-    else if (state == GameState.Lobby)
+    else if (gameState == GameState.Lobby)
     {
-        await self.JoinGame(game);
+        var lobbyState = await hubConnection.InvokeAsync<LobbyState>("GetLobbyState");
+        currentPlayers = lobbyState.CurrentPlayers;
+        expectedPlayers = lobbyState.ExpectedPlayers;
+        boardSize = lobbyState.BoardSize;
+        id = await hubConnection.InvokeAsync<string>("JoinGame", name);
     }
     else
     {
-        AnsiConsole.WriteLine($"Game in unpected state {state}. Try running again.");
+        AnsiConsole.WriteLine($"Game in unpected state {gameState}. Try running again.");
         return;
     }
 
-    var expected = await game.GetExpectedPlayers();
-    var boardSize = await game.GetBoardSize();
-
     AnsiConsole.WriteLine("Waiting for other players to join (press any key to start with NPCs for remaining)...");
     var prevCount = 0;
-    while (prevCount < expected)
+    while (prevCount < expectedPlayers)
     {
-        var currentCount = (await game.GetPlayers()).Count();
-        if (currentCount != prevCount)
+        if (currentPlayers != prevCount)
         {
-            AnsiConsole.WriteLine($"\tNow {currentCount}/{expected} players");
-            prevCount = currentCount;
+            AnsiConsole.WriteLine($"\tNow {currentPlayers}/{expectedPlayers} players");
+            prevCount = currentPlayers;
         }
 
         await Task.Delay(TimeSpan.FromMilliseconds(200));
         if (Console.KeyAvailable)
         {
             Console.ReadKey();
-            await game.Start();
+            await hubConnection.SendAsync("StartGame");
         }
     }
 
-    AnsiConsole.WriteLine("Starting...");
-    var round = 0;
     while (true)
     {
-        if (await game.GetCurrentState() != GameState.InProgress || !await self.IsAlive())
+        if (gameState != GameState.InProgress || !alive)
         {
             break;
         }
 
-        var canvas = new Canvas(boardSize.Width + 2, boardSize.Height + 2);
-        DrawBorder(canvas);
-
-        canvas.PixelWidth = 1;
-
-        foreach (var b in await game.GetBerryPositions())
+        if (Console.KeyAvailable)
         {
-            canvas.SetPixel(b.X + 1, b.Y + 1, Color.Red);
-        }
-
-        var players = await game.GetPlayers();
-        foreach (var p in players)
-        {
-            if (p.GetPrimaryKeyString() == self.GetPrimaryKeyString())
+            var key = Console.ReadKey(true).Key;
+            if (key == ConsoleKey.LeftArrow)
             {
-                await DrawPlayer(canvas, p, Color.Blue, Color.DarkBlue);
+                await hubConnection.InvokeAsync("TurnLeft");
             }
-            else if (await p.IsHumanControlled())
+            else if (key == ConsoleKey.RightArrow)
             {
-                await DrawPlayer(canvas, p, Color.Orange1, Color.DarkOrange);
-            }
-            else
-            {
-                await DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
+                await hubConnection.InvokeAsync("TurnRight");
             }
         }
 
-        AnsiConsole.Cursor.SetPosition(0, 0);
-        AnsiConsole.Write(canvas);
-        AnsiConsole.Cursor.SetPosition(1, boardSize.Height + 2);
-        AnsiConsole.Markup($"[black on white]Score: {await self.GetScore()}[/]");
-        AnsiConsole.Cursor.SetPosition(0, 0);
-
-        var prev = round;
-        while (prev == round)
-        {
-            round = await game.GetCurrentRound();
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.LeftArrow)
-                {
-                    await self.TurnLeft();
-                }
-                else if (key == ConsoleKey.RightArrow)
-                {
-                    await self.TurnRight();
-                }
-            }
-        }
+        await Task.Delay(TimeSpan.FromMilliseconds(20));
     }
 
     AnsiConsole.Cursor.SetPosition(5, boardSize.Height - 5);
-    AnsiConsole.MarkupLine($"[bold yellow on blue]GAME OVER! Your score was: {await self.GetScore()}.  You {(await self.IsAlive() ? "won!" : "lost :'(")}[/]");
+    AnsiConsole.MarkupLine($"[bold yellow on blue]GAME OVER! Your score was: {score}.  You {(alive ? "won!" : "lost :'(")}[/]");
 }
 catch (Exception e)
 {
@@ -149,9 +146,44 @@ finally
     AnsiConsole.Foreground = originalFg;
 }
 
-static async Task DrawPlayer(Canvas canvas, IPlayer player, Color headColor, Color tailColor)
+void DisplayRound(IList<PlayerState> players, IEnumerable<Point> berries)
 {
-    var body = await player.GetBody();
+    var canvas = new Canvas(boardSize.Width + 2, boardSize.Height + 2);
+    DrawBorder(canvas);
+
+    canvas.PixelWidth = 1;
+
+    foreach (var b in berries)
+    {
+        canvas.SetPixel(b.X + 1, b.Y + 1, Color.Red);
+    }
+
+    foreach (var p in players)
+    {
+        if (p.Id == id)
+        {
+            DrawPlayer(canvas, p, Color.Blue, Color.DarkBlue);
+        }
+        else if (p.HumanControlled)
+        {
+            DrawPlayer(canvas, p, Color.Orange1, Color.DarkOrange);
+        }
+        else
+        {
+            DrawPlayer(canvas, p, Color.Green, Color.DarkGreen);
+        }
+    }
+
+    AnsiConsole.Cursor.SetPosition(0, 0);
+    AnsiConsole.Write(canvas);
+    AnsiConsole.Cursor.SetPosition(1, boardSize.Height + 2);
+    AnsiConsole.Markup($"[black on white]Score: {score}[/]");
+    AnsiConsole.Cursor.SetPosition(0, 0);
+}
+
+static void DrawPlayer(Canvas canvas, PlayerState player, Color headColor, Color tailColor)
+{
+    var body = player.Body;
     var head = body.First();
     canvas.SetPixel(head.X + 1, head.Y + 1, headColor);
 

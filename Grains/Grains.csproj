@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GrainInterfaces\GrainInterfaces.csproj" />
+    <ProjectReference Include="..\SharedTypes\SharedTypes.csproj" />
   </ItemGroup>
 
   <ItemGroup>
