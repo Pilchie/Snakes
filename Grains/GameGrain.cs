@@ -18,6 +18,7 @@ public class GameGrain : Grain, IGame
     private Size _boardSize;
     private int _expectedPlayers;
     private GameState _currentState = GameState.NoGame;
+    private IDisposable? _timerHandle;
 
     public GameGrain(ILoggerFactory loggerFactory)
     {
@@ -72,7 +73,7 @@ public class GameGrain : Grain, IGame
 
         await SetState(GameState.InProgress);
 
-        RegisterTimer(PlayRound, state: null, dueTime: TimeSpan.FromSeconds(2), period: TimeSpan.FromMilliseconds(200));
+        _timerHandle = RegisterTimer(PlayRound, state: null, dueTime: TimeSpan.FromSeconds(2), period: TimeSpan.FromMilliseconds(200));
     }
 
     public Task<GameState> GetCurrentState()
@@ -205,6 +206,7 @@ public class GameGrain : Grain, IGame
         if (!await IsInProgress())
         {
             await SetState(GameState.NoGame);
+            _timerHandle?.Dispose();
         }
     }
 

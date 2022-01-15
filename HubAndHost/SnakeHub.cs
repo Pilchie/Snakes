@@ -35,6 +35,7 @@ public class GameObserver : IGameObserver
     public async Task OnNewRound()
     {
         // Won't be called by the grain, synthesize the arguments to the hub clients.
+        // Consider moving this into the grain, and simplifying the interface.
         var game = _clusterClient.GetGrain<IGame>(Guid.Empty);
         var playerGrains = await game.GetPlayers();
         var berries = await game.GetBerryPositions();
@@ -85,10 +86,14 @@ public class SnakeHub : Hub<IGameObserver>
     public async Task<GameState> GetCurrentState()
     {
         var game = _clusterClient.GetGrain<IGame>(Guid.Empty);
-        var go = new GameObserver(_hubContext, _clusterClient);
-        Context.Items.Add(go, go);
-        var gor = await _clusterClient.CreateObjectReference<IGameObserver>(go);
-        await game.Subscribe(gor);
+        if (!Context.Items.ContainsKey("GameObserver"))
+        {
+            var go = new GameObserver(_hubContext, _clusterClient);
+            Context.Items.Add("GameObserver", go);
+            var gor = await _clusterClient.CreateObjectReference<IGameObserver>(go);
+            await game.Subscribe(gor);
+        }
+
         return await game.GetCurrentState();
     }
 
