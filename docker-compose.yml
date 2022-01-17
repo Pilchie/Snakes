@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+  hubandhost:
+    image: ${DOCKER_REGISTRY-}hubandhost
+    build:
+      context: .
+      dockerfile: HubAndHost/Dockerfile
+    depends_on: [snakessilo]
+    ports: [80]
+
+  snakessilo:
+    image: ${DOCKER_REGISTRY-}snakessilo
+    build:
+      context: .
+      dockerfile: SnakesSilo/Dockerfile
+    ports: [11111,30000]
