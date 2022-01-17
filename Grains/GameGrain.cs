@@ -1,4 +1,5 @@
-﻿using Orleans;
+﻿using Microsoft.Extensions.Logging;
+using Orleans;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -11,27 +12,33 @@ namespace Snakes;
 
 public class GameGrain : Grain, IGame
 {
+    private readonly ObserverManager<IGameObserver> _subscriptionManager;
     private readonly List<Point> _berries = new();
     private readonly List<IPlayer> _players = new();
     private Size _boardSize;
-    private int _currentRound;
     private int _expectedPlayers;
     private GameState _currentState = GameState.NoGame;
+    private IDisposable? _timerHandle;
 
-    public Task InitializeNewGame(Size boardSize, int expectedPlayers)
+    public GameGrain(ILoggerFactory loggerFactory)
+    {
+        _subscriptionManager = new ObserverManager<IGameObserver>(TimeSpan.FromMinutes(1), loggerFactory, "TurnSubscriptions");
+    }
+
+    public async Task InitializeNewGame(Size boardSize, int expectedPlayers)
     {
         if (_currentState != GameState.NoGame)
         {
             throw new InvalidOperationException($"Can't transition from '{_currentState}' to '{nameof(GameState.Lobby)}'");
         }
 
-        _currentState = GameState.Lobby;
-        _currentRound = 0;
+        await SetState(GameState.Lobby);
+        await _subscriptionManager.Notify(go => go.OnExpectedPlayerCountChanged(expectedPlayers));
+        await _subscriptionManager.Notify(go => go.OnBoardSizeChanged(boardSize));
         _expectedPlayers = expectedPlayers;
         _boardSize = boardSize;
         _berries.Clear();
         _players.Clear();
-        return Task.CompletedTask;
     }
 
     public Task<Size> GetBoardSize()
@@ -64,14 +71,23 @@ public class GameGrain : Grain, IGame
             _berries.Add(Random.Shared.OnScreen(0, _boardSize));
         }
 
-        _currentState = GameState.InProgress;
+        await SetState(GameState.InProgress);
 
-        RegisterTimer(PlayRound, state: null, dueTime: TimeSpan.FromSeconds(2), period: TimeSpan.FromMilliseconds(200));
+        _timerHandle = RegisterTimer(PlayRound, state: null, dueTime: TimeSpan.FromSeconds(2), period: TimeSpan.FromMilliseconds(200));
     }
 
     public Task<GameState> GetCurrentState()
     {
         return Task.FromResult(_currentState);
+    }
+
+    private async Task SetState(GameState state)
+    {
+        if (_currentState != state)
+        {
+            _currentState = state;
+            await _subscriptionManager.Notify(go => go.OnStateChanged(state));
+        }
     }
 
     private async Task<bool> IsInProgress()
@@ -104,15 +120,8 @@ public class GameGrain : Grain, IGame
         return Task.FromResult<IEnumerable<Point>>(_berries);
     }
 
-    public  Task<int> GetCurrentRound()
-    {
-        return Task.FromResult(_currentRound);
-    }
-
     private async Task PlayRound(object state)
     {
-        _currentRound++;
-
         foreach (var p in _players)
         {
             if (!await p.IsHumanControlled())
@@ -148,6 +157,8 @@ public class GameGrain : Grain, IGame
                 if (head == b)
                 {
                     await p.FoundBerry();
+                    var newScore = await p.GetScore();
+                    await _subscriptionManager.Notify(go => go.OnScoreChanged(p.GetPrimaryKeyString(), newScore));
                     berriesToRemove.Add(b);
                 }
             }
@@ -177,6 +188,7 @@ public class GameGrain : Grain, IGame
         {
             _players.Remove(p);
             await p.Die();
+            await _subscriptionManager.Notify(go => go.OnDied(p.GetPrimaryKeyString()));
         }
 
         foreach (var b in berriesToRemove)
@@ -189,20 +201,35 @@ public class GameGrain : Grain, IGame
             _berries.Add(Random.Shared.OnScreen(border: 0, _boardSize));
         }
 
+        await _subscriptionManager.Notify(go => go.OnNewRound());
+
         if (!await IsInProgress())
         {
-            _currentState = GameState.NoGame;
+            await SetState(GameState.NoGame);
+            _timerHandle?.Dispose();
         }
     }
 
-    public Task AddPlayer(IPlayer player)
+    public async Task AddPlayer(IPlayer player)
     {
         this._players.Add(player);
-        return Task.CompletedTask;
+        await this._subscriptionManager.Notify(go => go.OnPlayerJoined(this._players.Count));
     }
 
     public Task<IEnumerable<IPlayer>> GetPlayers()
     {
         return Task.FromResult<IEnumerable<IPlayer>>(_players);
+    }
+
+    public Task Subscribe(IGameObserver gameObserver)
+    {
+        _subscriptionManager.Subscribe(gameObserver, gameObserver);
+        return Task.CompletedTask;
+    }
+
+    public Task Unsubscribe(IGameObserver gameObserver)
+    {
+        _subscriptionManager.Unsubscribe(gameObserver);
+        return Task.CompletedTask;
     }
 }

@@ -15,5 +15,6 @@ public interface IGame : IGrainWithGuidKey
     Task<IEnumerable<Point>> GetBerryPositions();
     Task AddPlayer(IPlayer player);
     Task<IEnumerable<IPlayer>> GetPlayers();
-    Task<int> GetCurrentRound();
+    Task Subscribe(IGameObserver gameObserver);
+    Task Unsubscribe(IGameObserver gameObserver);
 }
