@@ -21,7 +21,7 @@ var id = "";
 try
 {
     var hubConnection = new HubConnectionBuilder()
-            .WithUrl("https://localhost:7193/snakehub")
+            .WithUrl("https://localhost:61942/snakehub")
             .Build();
 
     hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => expectedPlayers = newCount);

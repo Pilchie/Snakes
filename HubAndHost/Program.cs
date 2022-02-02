@@ -23,11 +23,11 @@ app.Run();
 
 static async Task<IClusterClient> ConnectClient()
 {
+    var addresses = await Dns.GetHostAddressesAsync("snakessilo");
     IClusterClient client;
     client = new ClientBuilder()
         .UseStaticClustering(
-            new IPEndPoint(IPAddress.Loopback, 30000)
-        )
+            addresses.Select(a => new IPEndPoint(a, 30_000)).ToArray())
         .Configure<ClusterOptions>(options =>
         {
             options.ClusterId = "dev";

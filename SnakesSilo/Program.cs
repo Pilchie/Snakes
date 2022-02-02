@@ -25,15 +25,17 @@ catch (Exception ex)
 
 static async Task<ISiloHost> StartSilo()
 {
+    var addresses = await Dns.GetHostAddressesAsync("snakessilo");
+    var primarySiloEndpoint = new IPEndPoint(addresses.First(), 11111);
     // define the cluster configuration
     var builder = new SiloHostBuilder()
-        .UseDevelopmentClustering(new IPEndPoint(IPAddress.Loopback, 11111))
-        .ConfigureEndpoints(IPAddress.Loopback, siloPort: 11111, gatewayPort: 30000, listenOnAnyHostAddress: true)
+        .UseDevelopmentClustering(primarySiloEndpoint)
         .Configure<ClusterOptions>(options =>
         {
             options.ClusterId = "dev";
             options.ServiceId = "Snakes";
         })
+        .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
         .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole());
 
