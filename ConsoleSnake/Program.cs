@@ -18,10 +18,11 @@ var boardSize = Size.Empty;
 var alive = true;
 var score = 0;
 var id = "";
+
 try
 {
     var hubConnection = new HubConnectionBuilder()
-            .WithUrl("https://localhost:61942/snakehub")
+            .WithUrl("https://localhost:65032/snakehub")
             .Build();
 
     hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => expectedPlayers = newCount);
@@ -72,7 +73,6 @@ try
     {
         var desiredCount = AnsiConsole.Ask<int>("How many players should there be (including NPCs)?");
         await hubConnection.InvokeAsync("InitializeNewGame", new Size(96, 24), desiredCount);
-        id = await hubConnection.InvokeAsync<string>("JoinGame", name);
     }
     else if (gameState == GameState.Lobby)
     {
@@ -80,7 +80,6 @@ try
         currentPlayers = lobbyState.CurrentPlayers;
         expectedPlayers = lobbyState.ExpectedPlayers;
         boardSize = lobbyState.BoardSize;
-        id = await hubConnection.InvokeAsync<string>("JoinGame", name);
     }
     else
     {
@@ -88,6 +87,7 @@ try
         return;
     }
 
+    id = await hubConnection.InvokeAsync<string>("JoinGame", name);
     AnsiConsole.WriteLine("Waiting for other players to join (press any key to start with NPCs for remaining)...");
     var prevCount = 0;
     while (prevCount < expectedPlayers)
