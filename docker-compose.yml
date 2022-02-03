@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: HubAndHost/Dockerfile
     depends_on: [snakessilo]
-    ports: [80]
+    ports: [80,443]
 
   snakessilo:
     image: ${DOCKER_REGISTRY-}snakessilo
