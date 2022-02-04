@@ -19,8 +19,8 @@ jobs:
         dotnet-version: '6.0'
         include-prerelease: True
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore Snakes.sln
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore Snakes.sln
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test Snakes.sln --no-build --verbosity normal

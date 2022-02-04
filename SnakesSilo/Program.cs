@@ -3,16 +3,19 @@ using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Snakes;
+using System.Net;
 
 try
 {
     var host = await StartSilo();
-    Console.WriteLine("\n\n Press Enter to terminate...\n\n");
-    Console.ReadLine();
+    //Console.WriteLine("\n\n Press Enter to terminate...\n\n");
+    //Console.ReadLine();
 
-    await host.StopAsync();
-
-    return 0;
+    Console.CancelKeyPress += (s,e) => host.StopAsync(); 
+    while (true)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
 }
 catch (Exception ex)
 {
@@ -22,16 +25,28 @@ catch (Exception ex)
 
 static async Task<ISiloHost> StartSilo()
 {
-    // define the cluster configuration
+    const bool local = false;
     var builder = new SiloHostBuilder()
-        .UseLocalhostClustering()
         .Configure<ClusterOptions>(options =>
         {
             options.ClusterId = "dev";
             options.ServiceId = "Snakes";
         })
+        .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
-        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddConsole());
+        .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole());
+
+    if (local)
+    {
+        var addresses = await Dns.GetHostAddressesAsync("snakessilo");
+        var primarySiloEndpoint = new IPEndPoint(addresses.First(), 11_111);
+        builder.UseDevelopmentClustering(primarySiloEndpoint);
+    }
+    else
+    {
+        var connectionString = Utilities.GetStorageConnectionString();
+        builder.UseAzureStorageClustering(options => options.ConfigureTableServiceClient(connectionString));
+    }
 
     var host = builder.Build();
     await host.StartAsync();
