@@ -22,7 +22,7 @@ var id = "";
 try
 {
     var hubConnection = new HubConnectionBuilder()
-            .WithUrl("https://localhost:65032/snakehub")
+            .WithUrl("https://sneks-hub.livelyplant-fdfa7a8a.canadacentral.azurecontainerapps.io/snakehub")
             .Build();
 
     hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => expectedPlayers = newCount);

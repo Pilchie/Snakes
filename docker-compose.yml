@@ -8,6 +8,8 @@ services:
       dockerfile: HubAndHost/Dockerfile
     depends_on: [snakessilo]
     ports: [80,443]
+    environment:
+      - AzureStorageConnectionString
 
   snakessilo:
     image: ${DOCKER_REGISTRY-}snakessilo
@@ -15,3 +17,5 @@ services:
       context: .
       dockerfile: SnakesSilo/Dockerfile
     ports: [11111,30000]
+    environment:
+      - AzureStorageConnectionString

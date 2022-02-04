@@ -4,6 +4,7 @@ using Orleans;
 using Snakes;
 using Microsoft.AspNetCore.SignalR;
 using System.Net;
+using Orleans.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSignalR();
@@ -23,20 +24,29 @@ app.Run();
 
 static async Task<IClusterClient> ConnectClient()
 {
-    var addresses = await Dns.GetHostAddressesAsync("snakessilo");
-    IClusterClient client;
-    client = new ClientBuilder()
-        .UseStaticClustering(
-            addresses.Select(a => new IPEndPoint(a, 30_000)).ToArray())
+    var builder = new ClientBuilder()
         .Configure<ClusterOptions>(options =>
         {
             options.ClusterId = "dev";
             options.ServiceId = "Snakes";
         })
-        .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole())
-        .Build();
+        .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole());
+
+    const bool local = false;
+    if (local)
+    {
+        var addresses = await Dns.GetHostAddressesAsync("snakessilo");
+        builder.UseStaticClustering(
+            addresses.Select(a => new IPEndPoint(a, 30_000)).ToArray());
+    }
+    else
+    {
+        var connectionString = Utilities.GetStorageConnectionString();
+        builder.UseAzureStorageClustering(options => options.ConfigureTableServiceClient(connectionString));
+    }
 
     Console.WriteLine("Client about to connect to silo host \n");
+    var client = builder.Build();
     await client.Connect();
     Console.WriteLine("Client successfully connected to silo host \n");
     return client;
