@@ -30,7 +30,7 @@ static async Task<IClusterClient> ConnectClient()
             options.ClusterId = "dev";
             options.ServiceId = "Snakes";
         })
-        .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole());
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());
 
     const bool local = false;
     if (local)
