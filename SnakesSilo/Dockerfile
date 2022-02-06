@@ -5,7 +5,7 @@ WORKDIR /app
 EXPOSE 11111
 EXPOSE 30000
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS publish
 WORKDIR /src
 COPY ["../SnakesSilo/SnakesSilo.csproj", "SnakesSilo/"]
 COPY ["../GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]

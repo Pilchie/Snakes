@@ -18,23 +18,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Log in to container registry
-        uses: docker/login-action@v1
-        with:
-          registry: snekscr.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
       - name: Build 'snakessilo' image
         uses: docker/build-push-action@v2
         with:
           push: false
-          tags: snekscr.azurecr.io/sneks-silo:${{ github.sha }}
           file: ./SnakesSilo/Dockerfile
 
       - name: Build 'sneks-hub' image
         uses: docker/build-push-action@v2
         with:
           push: false
-          tags: snekscr.azurecr.io/sneks-hub:${{ github.sha }}
           file: ./HubAndHost/Dockerfile
