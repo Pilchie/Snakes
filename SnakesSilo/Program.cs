@@ -30,7 +30,7 @@ static async Task<ISiloHost> StartSilo()
     var builder = new SiloHostBuilder()
         .Configure<ClusterOptions>(options =>
 {
-            options.ClusterId = GitInfo.GitSha;
+            options.ClusterId = ClusterInfo.ClusterId;
             options.ServiceId = "Snakes";
         })
         .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
