@@ -34,7 +34,7 @@ static async Task<ISiloHost> StartSilo()
         })
         .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
-        .ConfigureLogging(logging => logging/*.SetMinimumLevel(LogLevel.Warning)*/.AddConsole());
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());
 
     if (local)
     {
