@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: HubAndHost/Dockerfile
+      args:
+        GIT_SHA: compose
     depends_on: [snakessilo]
     ports: [80,443]
     environment:
@@ -16,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: SnakesSilo/Dockerfile
+      args:
+        GIT_SHA: compose
     ports: [11111,30000]
     environment:
       - AzureStorageConnectionString

@@ -6,6 +6,7 @@ EXPOSE 80
 EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS publish
+ARG GIT_SHA
 WORKDIR /src
 COPY ["HubAndHost/HubAndHost.csproj", "HubAndHost/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
@@ -15,9 +16,9 @@ RUN dotnet restore "HubAndHost/HubAndHost.csproj"
 RUN dotnet restore "ConsoleSnake/ConsoleSnake.csproj"
 COPY . .
 WORKDIR "/src/HubAndHost"
-RUN dotnet publish --no-restore "HubAndHost.csproj" -c Release -o /app/publish
+RUN dotnet publish --no-restore "HubAndHost.csproj" -c Release -o /app/publish /p:GitSha=${GIT_SHA}
 WORKDIR "/src/ConsoleSnake"
-RUN dotnet publish --no-restore "ConsoleSnake.csproj" -c Release -o /app/publish/wwwroot
+RUN dotnet publish --no-restore "ConsoleSnake.csproj" -c Release -o /app/publish/wwwroot /p:GitSha=${GIT_SHA}
 
 FROM base AS final
 WORKDIR /app

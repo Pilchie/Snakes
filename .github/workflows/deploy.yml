@@ -32,6 +32,7 @@ jobs:
           push: true
           tags: snekscr.azurecr.io/sneks-silo:${{ github.sha }}
           file: ./SnakesSilo/Dockerfile
+          build-args: GIT_SHA=${{ github.sha }}
 
       - name: Build and push 'sneks-hub' image to registry
         uses: docker/build-push-action@v2
@@ -39,6 +40,7 @@ jobs:
           push: true
           tags: snekscr.azurecr.io/sneks-hub:${{ github.sha }}
           file: ./HubAndHost/Dockerfile
+          build-args: GIT_SHA=${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
