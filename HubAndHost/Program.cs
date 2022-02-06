@@ -29,7 +29,7 @@ static async Task<IClusterClient> ConnectClient()
     var builder = new ClientBuilder()
         .Configure<ClusterOptions>(options =>
         {
-            options.ClusterId = "dev";
+            options.ClusterId = GitInfo.GitSha;
             options.ServiceId = "Snakes";
         })
         .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());

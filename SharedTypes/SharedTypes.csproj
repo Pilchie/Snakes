@@ -7,4 +7,30 @@
     <RootNamespace>Snakes</RootNamespace>
   </PropertyGroup>
 
+  <Target Name="SetSourceRevisionId">
+    <Exec Command="git rev-parse HEAD" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)">
+      <Output PropertyName="SourceRevisionId" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <PropertyGroup>
+      <SourceRevisionId>$(SourceRevisionId.Substring(0, 8))-$([System.DateTime]::Now.ToString('yyyyddMM-HHmmss'))</SourceRevisionId>
+      <_SourceLines>
+        namespace Snakes%3B
+
+        public class GitInfo
+        {
+        public const string GitSha = "$(SourceRevisionId)"%3B
+        }
+      </_SourceLines>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="$(IntermediateOutputPath)GitInfo.cs" Lines="$(_SourceLines)" Overwrite="True" />
+  </Target>
+
+  <PropertyGroup>
+    <CoreCompileDependsOn>$(CoreCompileDependsOn);SetSourceRevisionId</CoreCompileDependsOn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(IntermediateOutputPath)GitInfo.cs" />
+  </ItemGroup>
 </Project>
