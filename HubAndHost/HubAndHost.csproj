@@ -17,6 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ConsoleSnake\ConsoleSnake.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ProjectReference Include="..\GrainInterfaces\GrainInterfaces.csproj" />
     <ProjectReference Include="..\SharedTypes\SharedTypes.csproj" />
   </ItemGroup>

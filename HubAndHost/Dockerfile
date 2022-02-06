@@ -5,17 +5,15 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS publish
 WORKDIR /src
 COPY ["HubAndHost/HubAndHost.csproj", "HubAndHost/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["SharedTypes/SharedTypes.csproj", "SharedTypes/"]
+COPY ["ConsoleSnake/ConsoleSnake.csproj", "ConsoleSnake/"]
 RUN dotnet restore "HubAndHost/HubAndHost.csproj"
 COPY . .
 WORKDIR "/src/HubAndHost"
-RUN dotnet build "HubAndHost.csproj" -c Release -o /app/build
-
-FROM build AS publish
 RUN dotnet publish "HubAndHost.csproj" -c Release -o /app/publish
 
 FROM base AS final
