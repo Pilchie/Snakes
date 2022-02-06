@@ -8,15 +8,20 @@
   </PropertyGroup>
 
   <Target Name="GenerateClusterId">
+    <Exec Command="hostname" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(ComputerName)' == ''">
+      <Output PropertyName="_HostName" TaskParameter="ConsoleOutput" />
+    </Exec>
     <PropertyGroup>
-      <SourceRevisionId>$(ComputerName)@$([System.DateTime]::Now.ToString('yyyyddMM-HHmmss'))</SourceRevisionId>
-      <_SourceLines>
-        namespace Snakes%3B
 
-        public class ClusterInfo
-        {
-        public const string ClusterId = "$(SourceRevisionId)"%3B
-        }
+      <_HostName Condition="'$(ComputerName)' != ''">$(ComputerName)</_HostName>
+
+      <_SourceLines>
+namespace Snakes%3B
+
+public class ClusterInfo
+{
+    public const string ClusterId = "$(_HostName)"%3B
+}
       </_SourceLines>
     </PropertyGroup>
 
