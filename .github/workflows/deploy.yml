@@ -1,14 +1,12 @@
-name: Trigger auto deployment for containerapps
+name: Build and deploy images to Azure Container Apps
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
+    branches:
       [ main ]
 
-  # Allow mannually trigger 
-  workflow_dispatch:      
+  # Allow mannually trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -30,26 +28,31 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build and push container image to registry
+      - name: Build and push 'snakessilo' image to registry
         uses: docker/build-push-action@v2
         with:
           push: true
           tags: snekscr.azurecr.io/sneks-silo:${{ github.sha }}
           file: ./SnakesSilo/Dockerfile
 
+      - name: Build and push 'sneks-hub' image to registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: snekscr.azurecr.io/sneks-hub:${{ github.sha }}
+          file: ./HubAndHost/Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    
+
     steps:
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-
-      - name: Deploy to containerapp
+      - name: Deploy 'sneks-silo' to containerapp
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -57,3 +60,12 @@ jobs:
             az extension add --source https://workerappscliextension.blob.core.windows.net/azure-cli-extension/containerapp-0.2.0-py2.py3-none-any.whl --yes
             echo "Starting Deploying"
             az containerapp update -n sneks-silo -g sneks-rg -i snekscr.azurecr.io/sneks-silo:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
+
+      - name: Deploy 'sneks-hub' to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "Installing containerapp extension"
+            az extension add --source https://workerappscliextension.blob.core.windows.net/azure-cli-extension/containerapp-0.2.0-py2.py3-none-any.whl --yes
+            echo "Starting Deploying"
+            az containerapp update -n sneks-hub -g sneks-rg -i snekscr.azurecr.io/sneks-hub:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
