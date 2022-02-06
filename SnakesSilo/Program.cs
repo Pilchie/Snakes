@@ -4,6 +4,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Snakes;
 using System.Net;
+using System.Runtime;
 
 try
 {
@@ -28,8 +29,8 @@ static async Task<ISiloHost> StartSilo()
     const bool local = false;
     var builder = new SiloHostBuilder()
         .Configure<ClusterOptions>(options =>
-        {
-            options.ClusterId = "dev";
+{
+            options.ClusterId = ClusterInfo.ClusterId;
             options.ServiceId = "Snakes";
         })
         .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)

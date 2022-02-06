@@ -18,6 +18,8 @@ var app = builder.Build();
 
 app.UseResponseCompression();
 
+app.UseStaticFiles();
+
 app.MapGet("/", () => "Hello World!");
 app.MapHub<SnakeHub>("/snakehub");
 app.Run();
@@ -27,7 +29,7 @@ static async Task<IClusterClient> ConnectClient()
     var builder = new ClientBuilder()
         .Configure<ClusterOptions>(options =>
         {
-            options.ClusterId = "dev";
+            options.ClusterId = ClusterInfo.ClusterId;
             options.ServiceId = "Snakes";
         })
         .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());

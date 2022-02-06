@@ -7,4 +7,33 @@
     <RootNamespace>Snakes</RootNamespace>
   </PropertyGroup>
 
+  <Target Name="GenerateClusterId">
+    <Exec Command="hostname" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(ComputerName)' == ''">
+      <Output PropertyName="_HostName" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <Exec Command="git rev-parse --short head" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(GitSha)' == ''">
+      <Output PropertyName="GitSha" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <PropertyGroup>
+      <_HostName Condition="'$(ComputerName)' != ''">$(ComputerName)</_HostName>
+      <_SourceLines>
+namespace Snakes%3B
+
+public class ClusterInfo
+{
+    public const string ClusterId = "$(_HostName)-$(GitSha)"%3B
+}
+      </_SourceLines>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="$(IntermediateOutputPath)ClusterInfo.cs" Lines="$(_SourceLines)" Overwrite="True" />
+  </Target>
+
+  <PropertyGroup>
+    <CoreCompileDependsOn>$(CoreCompileDependsOn);GenerateClusterId</CoreCompileDependsOn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(IntermediateOutputPath)ClusterInfo.cs" />
+  </ItemGroup>
 </Project>
