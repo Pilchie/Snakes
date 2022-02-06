@@ -14,7 +14,7 @@ COPY ["../Grains/Grains.csproj", "Grains/"]
 RUN dotnet restore "SnakesSilo/SnakesSilo.csproj"
 COPY . .
 WORKDIR "/src/SnakesSilo"
-RUN dotnet publish "SnakesSilo.csproj" -c Release -o /app/publish
+RUN dotnet publish --no-restore "SnakesSilo.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app

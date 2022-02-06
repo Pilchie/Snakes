@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,7 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <PublishSingleFile>true</PublishSingleFile>
-    <!-- Don't trim because it seems to break Spectre.Console :'( -->
+    <PublishSelfContained>true</PublishSelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Don't trim because it breaks SignalR and Spectre.Console -->
     <!--<PublishTrimmed>true</PublishTrimmed>-->
   </PropertyGroup>
 

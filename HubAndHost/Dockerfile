@@ -12,9 +12,12 @@ COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["SharedTypes/SharedTypes.csproj", "SharedTypes/"]
 COPY ["ConsoleSnake/ConsoleSnake.csproj", "ConsoleSnake/"]
 RUN dotnet restore "HubAndHost/HubAndHost.csproj"
+RUN dotnet restore "ConsoleSnake/ConsoleSnake.csproj"
 COPY . .
 WORKDIR "/src/HubAndHost"
-RUN dotnet publish "HubAndHost.csproj" -c Release -o /app/publish
+RUN dotnet publish --no-restore "HubAndHost.csproj" -c Release -o /app/publish
+WORKDIR "/src/ConsoleSnake"
+RUN dotnet publish --no-restore "ConsoleSnake.csproj" -c Release -o /app/publish/wwwroot
 
 FROM base AS final
 WORKDIR /app

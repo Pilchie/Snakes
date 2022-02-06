@@ -18,6 +18,8 @@ var app = builder.Build();
 
 app.UseResponseCompression();
 
+app.UseStaticFiles();
+
 app.MapGet("/", () => "Hello World!");
 app.MapHub<SnakeHub>("/snakehub");
 app.Run();
