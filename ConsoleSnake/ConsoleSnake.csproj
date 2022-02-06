@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <PublishSingleFile>true</PublishSingleFile>
-    <PublishTrimmed>true</PublishTrimmed>
+    <!-- Don't trim because it seems to break Spectre.Console :'( -->
+    <!--<PublishTrimmed>true</PublishTrimmed>-->
   </PropertyGroup>
 
   <ItemGroup>
