@@ -26,7 +26,6 @@ catch (Exception ex)
 
 static async Task<ISiloHost> StartSilo()
 {
-    const bool local = false;
     var builder = new SiloHostBuilder()
         .Configure<ClusterOptions>(options =>
 {
@@ -35,19 +34,8 @@ static async Task<ISiloHost> StartSilo()
         })
         .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
-        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());
-
-    if (local)
-    {
-        var addresses = await Dns.GetHostAddressesAsync("snakessilo");
-        var primarySiloEndpoint = new IPEndPoint(addresses.First(), 11_111);
-        builder.UseDevelopmentClustering(primarySiloEndpoint);
-    }
-    else
-    {
-        var connectionString = Utilities.GetStorageConnectionString();
-        builder.UseAzureStorageClustering(options => options.ConfigureTableServiceClient(connectionString));
-    }
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole())
+        .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(Utilities.GetStorageConnectionString()));
 
     var host = builder.Build();
     await host.StartAsync();

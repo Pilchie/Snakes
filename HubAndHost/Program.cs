@@ -32,20 +32,8 @@ static async Task<IClusterClient> ConnectClient()
             options.ClusterId = ClusterInfo.ClusterId;
             options.ServiceId = "Snakes";
         })
-        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole());
-
-    const bool local = false;
-    if (local)
-    {
-        var addresses = await Dns.GetHostAddressesAsync("snakessilo");
-        builder.UseStaticClustering(
-            addresses.Select(a => new IPEndPoint(a, 30_000)).ToArray());
-    }
-    else
-    {
-        var connectionString = Utilities.GetStorageConnectionString();
-        builder.UseAzureStorageClustering(options => options.ConfigureTableServiceClient(connectionString));
-    }
+        .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole())
+        .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(Utilities.GetStorageConnectionString()));
 
     Console.WriteLine("Client about to connect to silo host \n");
     var client = builder.Build();
