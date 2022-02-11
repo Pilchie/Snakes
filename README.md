@@ -9,15 +9,13 @@ A "Snakes" game implemented using various .NET technologies.
 You are the blue snake. Turn left/right with your arrow keys. Eat the berries, and avoid the walls and the other snakes. Be the last snake left standing.
 
 ## Status
-Currently there is a single player game using Console graphics.
+Currently there is a multi-player game with a Console Client.
 
 ## Roadmap
-* Distribute players/etc using Microsoft Orleans
-* Communicate between multiple players using SignalR
 * Make multiple clients:
     * Blazor
     * MAUI
     * Winforms
 
 ## Building
-* This repo currently uses [.NET 6 RC1](https://dotnet.microsoft.com/download/dotnet/6.0), so you'll need it installed in order to build/run.
+* This repo currently uses [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0), so you'll need it installed in order to build/run.
