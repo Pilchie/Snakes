@@ -7,6 +7,7 @@ using System.Net;
 using Orleans.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 builder.Services.AddResponseCompression(opts
     => opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
@@ -16,12 +17,24 @@ var client = await ConnectClient();
 builder.Services.AddSingleton(client);
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseWebAssemblyDebugging();
+}
+else
+{
+    app.UseExceptionHandler("/Error");
+}
+
 app.UseResponseCompression();
-
+app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+app.UseRouting();
 
-app.MapGet("/", () => "Hello World!");
+app.MapRazorPages();
+app.MapControllers();
 app.MapHub<SnakeHub>("/snakehub");
+
 app.Run();
 
 static async Task<IClusterClient> ConnectClient()
