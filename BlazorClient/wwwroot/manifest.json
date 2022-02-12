@@ -1,7 +1,7 @@
 {
   "name": "BlazorClient",
   "short_name": "BlazorClient",
-  "start_url": "./",
+  "start_url": "./Play",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#03173d",
