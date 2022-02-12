@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BlazorClient\BlazorClient.csproj" />
     <ProjectReference Include="..\GrainInterfaces\GrainInterfaces.csproj" />
     <ProjectReference Include="..\SharedTypes\SharedTypes.csproj" />
   </ItemGroup>

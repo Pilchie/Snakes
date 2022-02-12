@@ -20,11 +20,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Grains", "Grains\Grains.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnakesSilo", "SnakesSilo\SnakesSilo.csproj", "{62647E84-48F8-4816-A497-2FE5438CAFC7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HubAndHost", "HubAndHost\HubAndHost.csproj", "{D0E96D28-52C7-4BD1-A466-3D095C40BDB2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HubAndHost", "HubAndHost\HubAndHost.csproj", "{D0E96D28-52C7-4BD1-A466-3D095C40BDB2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedTypes", "SharedTypes\SharedTypes.csproj", "{343973B6-CE15-4F79-8C3F-ADF421A45830}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharedTypes", "SharedTypes\SharedTypes.csproj", "{343973B6-CE15-4F79-8C3F-ADF421A45830}"
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{1AB0E2B8-B342-4B01-8B4F-A62D7C028E28}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorClient", "BlazorClient\BlazorClient.csproj", "{F04659CA-5B9E-4910-A03F-9AFA9F710F5E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -60,6 +62,10 @@ Global
 		{1AB0E2B8-B342-4B01-8B4F-A62D7C028E28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1AB0E2B8-B342-4B01-8B4F-A62D7C028E28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1AB0E2B8-B342-4B01-8B4F-A62D7C028E28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F04659CA-5B9E-4910-A03F-9AFA9F710F5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F04659CA-5B9E-4910-A03F-9AFA9F710F5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F04659CA-5B9E-4910-A03F-9AFA9F710F5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F04659CA-5B9E-4910-A03F-9AFA9F710F5E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

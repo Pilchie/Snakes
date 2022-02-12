@@ -1,8 +1,8 @@
 ﻿@page
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Web version";
 }
 
-<h1>Coming soon!</h1>
-@*<component type="typeof(App)" render-mode="WebAssemblyPrerendered" />*@
+<component type="typeof(Snakes.Client.App)" render-mode="WebAssemblyPrerendered" />
