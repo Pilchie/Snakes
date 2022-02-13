@@ -8,10 +8,11 @@ using System.Drawing;
 
 namespace Snakes.Client.Pages;
 
-public partial class Play
+public partial class Play : IAsyncDisposable
 {
     BECanvas? _canvas;
     Canvas2DContext? _context;
+    HubConnection? _hubConnection;
     ElementReference _blueSquare;
     ElementReference _darkBlueSquare;
     ElementReference _greenSquare;
@@ -19,17 +20,20 @@ public partial class Play
     ElementReference _orangeSquare;
     ElementReference _darkOrangeSquare;
     ElementReference _redSquare;
-    readonly GameTime _gameTime = new();
 
     private int _expectedPlayers;
     private int _currentPlayers;
     private GameState _gameState;
     private Size _boardSize;
-    private bool _alive;
+    private bool _alive = true;
     private int _score;
     private string _id = "";
+    private int _currentRound = 0;
+    private int _lastRenderedRound = 0;
     IList<PlayerState> _players = new List<PlayerState>();
     IEnumerable<Point> _berries = Array.Empty<Point>();
+    private int _width;
+    private int _height;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -41,55 +45,62 @@ public partial class Play
         await JSRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
 
         var hubUrl = NavigationManager.ToAbsoluteUri("/snakehub");
-        var hubConnection = new HubConnectionBuilder()
+        _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
             .Build();
 
-        hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => _expectedPlayers = newCount);
-        hubConnection.On<GameState>("OnStateChanged", state =>
+        _hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => _expectedPlayers = newCount);
+        _hubConnection.On<GameState>("OnStateChanged", async state =>
         {
             switch (state)
             {
                 case GameState.NoGame:
+                    await OutputTextAsync($"Game over! You {(_alive ? "won" : "lost")}!", clear: false, 100, 200);
                     break;
                 case GameState.Lobby:
+                    await OutputTextAsync($"Waiting for enough players, currently {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 200);
                     break;
                 case GameState.InProgress:
                     if (_gameState == GameState.Lobby)
                     {
+                        await OutputTextAsync($"Game starting...", clear: true, 100, 100);
                     }
                     else if (_gameState == GameState.NoGame)
                     {
+                        await OutputTextAsync($"Another game is already in progress, try again later", clear: true, 100, 100);
                     }
                     break;
             }
             _gameState = state;
 
         });
-        hubConnection.On<int>("OnPlayerJoined", count =>
+        _hubConnection.On<int>("OnPlayerJoined", async count =>
         {
             _currentPlayers = count;
+            await OutputTextAsync($"Waiting for enough players, now {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 200);
         });
-        hubConnection.On<Size>("OnBoardSizeChanged", size => _boardSize = size);
-        hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", DisplayRound);
+        _hubConnection.On<Size>("OnBoardSizeChanged", size => _boardSize = size);
+        _hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", UpdatePlayerState);
 
-        hubConnection.On<string>("OnDied", id => _alive = false);
-        hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => _score = newScore);
-        await hubConnection.StartAsync();
+        _hubConnection.On<string>("OnDied", id => _alive = false);
+        _hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => _score = newScore);
+        await _hubConnection.StartAsync();
 
-        _gameState = await hubConnection.InvokeAsync<GameState>("GetCurrentState");
+        _gameState = await _hubConnection.InvokeAsync<GameState>("GetCurrentState");
         if (_gameState == GameState.NoGame)
         {
             var desiredCount = 5;
-            await hubConnection.InvokeAsync("InitializeNewGame", new Size(96, 24), desiredCount);
+            await _hubConnection.InvokeAsync("InitializeNewGame", new Size(96, 24), desiredCount);
+            await OutputTextAsync($"Starting new game with {desiredCount} players.", clear: true, 100, 100);
         }
         else if (_gameState == GameState.Lobby)
         {
-            var lobbyState = await hubConnection.InvokeAsync<LobbyState>("GetLobbyState");
+            var lobbyState = await _hubConnection.InvokeAsync<LobbyState>("GetLobbyState");
             _currentPlayers = lobbyState.CurrentPlayers;
             _expectedPlayers = lobbyState.ExpectedPlayers;
             _boardSize = lobbyState.BoardSize;
+            await OutputTextAsync($"Found existing lobby. Waiting for more players, currently {_currentPlayers}/{_expectedPlayers}.", clear: true, 100, 100);
         }
         else
         {
@@ -97,53 +108,80 @@ public partial class Play
         }
 
         var name = "pilchie";
-        _id = await hubConnection.InvokeAsync<string>("JoinGame", name);
+        _id = await _hubConnection.InvokeAsync<string>("JoinGame", name);
+        await OutputTextAsync($"Joining game as {name}.", true, 100, 100);
+    }
+
+    private async ValueTask OutputTextAsync(string text, bool clear, int x, int y)
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
+        }
+
+        if (clear)
+        {
+            await _context.ClearRectAsync(0, 0, _width, _height);
+        }
+        await _context.SetStrokeStyleAsync("white");
+        await _context.SetFontAsync("24px ver2dana");
+        await _context.StrokeTextAsync(text, x, y);
     }
 
     [JSInvokable]
     public async ValueTask GameLoop(float timeStamp, int screenWidth, int screenHeight)
     {
-        _gameTime.TotalTime = timeStamp;
-        await Render(screenWidth, screenHeight);
+        await Render();
     }
 
-    private async ValueTask Render(int width, int height)
+    private async ValueTask Render()
     {
-        if (_context == null)
+        if (_context is null)
         {
             throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
         }
 
-        await _context.ClearRectAsync(0, 0, width, height);
-
-        var xscale = width / _boardSize.Width;
-        var yscale = height / _boardSize.Height;
-        foreach (var p in _players)
+        if (_gameState == GameState.InProgress && _alive)
         {
-            if (p.Id == _id)
+            if (_currentRound == _lastRenderedRound)
             {
-                await DrawPlayer(p, _blueSquare, _darkBlueSquare, xscale, yscale);
+                return;
             }
-            else if (p.HumanControlled)
-            {
-                await DrawPlayer(p, _orangeSquare, _darkOrangeSquare, xscale, yscale);
-            }
-            else
-            {
-                await DrawPlayer(p, _greenSquare, _darkGreenSquare, xscale, yscale);
-            }
-        }
 
-        foreach (var b in _berries)
-        {
-            await _context.DrawImageAsync(this._redSquare, b.X * xscale, b.Y * yscale, xscale, yscale);
-        }
+            _lastRenderedRound = _currentRound;
 
+            await _context.ClearRectAsync(0, 0, _width, _height);
+
+            var xscale = _width / _boardSize.Width;
+            var yscale = _height / _boardSize.Height;
+            foreach (var p in _players)
+            {
+                if (p.Id == _id)
+                {
+                    await DrawPlayer(p, _blueSquare, _darkBlueSquare, xscale, yscale);
+                }
+                else if (p.HumanControlled)
+                {
+                    await DrawPlayer(p, _orangeSquare, _darkOrangeSquare, xscale, yscale);
+                }
+                else
+                {
+                    await DrawPlayer(p, _greenSquare, _darkGreenSquare, xscale, yscale);
+                }
+            }
+
+            foreach (var b in _berries)
+            {
+                await _context.DrawImageAsync(this._redSquare, b.X * xscale, b.Y * yscale, xscale, yscale);
+            }
+
+            await OutputTextAsync($"Score: {_score}", clear: false, 5, 50);
+        }
     }
 
     async Task DrawPlayer(PlayerState player, ElementReference headColor, ElementReference tailColor, int width, int height)
     {
-        if (_context == null)
+        if (_context is null)
         {
             throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
         }
@@ -157,39 +195,56 @@ public partial class Play
         }
     }
 
-    void DisplayRound(IList<PlayerState> players, IEnumerable<Point> berries)
+    void UpdatePlayerState(IList<PlayerState> players, IEnumerable<Point> berries)
     {
         this._players = players;
         this._berries = berries;
+        this._currentRound++;
     }
-}
 
-public class Sprite
-{
-    public Size Size { get; set; }
-    public ElementReference SpriteSheet { get; set; }
-}
-
-public class GameTime
-{
-    private float _totalTime = 0;
-
-    /// <summary>
-    /// total time elapsed since the beginning of the game
-    /// </summary>
-    public float TotalTime
+    [JSInvokable]
+    public async ValueTask OnKeyDown(int keyCode)
     {
-        get => _totalTime;
-        set
+        if (_hubConnection is null)
         {
-            this.ElapsedTime = value - _totalTime;
-            _totalTime = value;
+            return;
+        }
 
+        if (keyCode == (int)Keys.Left)
+        {
+            await _hubConnection.InvokeAsync("TurnLeft");
+        }
+        else if (keyCode == (int)Keys.Right)
+        {
+            await _hubConnection.InvokeAsync("TurnRight");
         }
     }
 
-    /// <summary>
-    /// time elapsed since last frame
-    /// </summary>
-    public float ElapsedTime { get; private set; }
+    [JSInvokable]
+    public void OnResize(int width, int height)
+    {
+        _width = width;
+        _height = height;
+    }
+
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
+    public async ValueTask DisposeAsync()
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}
+
+public enum Keys
+{
+    Up = 38,
+    Left = 37,
+    Down = 40,
+    Right = 39,
+    Space = 32,
+    LeftCtrl = 17,
+    LeftAlt = 18,
 }

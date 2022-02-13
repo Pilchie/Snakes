@@ -46,6 +46,8 @@
 
             game.canvas.width = window.innerWidth;
             game.canvas.height = window.innerHeight;
+
+            game.instance.invokeMethodAsync('OnResize', window.innerWidth, window.innerHeight)
         }
 
         window.initGame = (instance) => {
@@ -54,6 +56,10 @@
             window.game = {
                 instance: instance,
                 canvas: canvases.length ? canvases[0] : null
+            };
+
+            window.onkeydown = (e) => {
+                game.instance.invokeMethodAsync('OnKeyDown', e.keyCode);
             };
 
             window.addEventListener("resize", onResize);
