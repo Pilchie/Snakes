@@ -32,13 +32,13 @@ public class GameGrain : Grain, IGame
             throw new InvalidOperationException($"Can't transition from '{_currentState}' to '{nameof(GameState.Lobby)}'");
         }
 
-        await SetState(GameState.Lobby);
-        await _subscriptionManager.Notify(go => go.OnExpectedPlayerCountChanged(expectedPlayers));
-        await _subscriptionManager.Notify(go => go.OnBoardSizeChanged(boardSize));
-        _expectedPlayers = expectedPlayers;
-        _boardSize = boardSize;
         _berries.Clear();
         _players.Clear();
+        _expectedPlayers = expectedPlayers;
+        await _subscriptionManager.Notify(go => go.OnExpectedPlayerCountChanged(expectedPlayers));
+        _boardSize = boardSize;
+        await _subscriptionManager.Notify(go => go.OnBoardSizeChanged(boardSize));
+        await SetState(GameState.Lobby);
     }
 
     public Task<Size> GetBoardSize()
