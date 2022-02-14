@@ -59,7 +59,9 @@ public partial class Play : IAsyncDisposable
                     await OutputTextAsync($"Game over! You {(_alive ? "won" : "lost")}!", clear: false, 100, 200);
                     break;
                 case GameState.Lobby:
-                    await OutputTextAsync($"Waiting for enough players, currently {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 200);
+                    await OutputTextAsync($"Waiting for enough players, currently {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 100);
+                    await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
+
                     break;
                 case GameState.InProgress:
                     if (_gameState == GameState.Lobby)
@@ -78,7 +80,9 @@ public partial class Play : IAsyncDisposable
         _hubConnection.On<int>("OnPlayerJoined", async count =>
         {
             _currentPlayers = count;
-            await OutputTextAsync($"Waiting for enough players, now {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 200);
+            await OutputTextAsync($"Waiting for enough players, now {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 100);
+            await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
+
         });
         _hubConnection.On<Size>("OnBoardSizeChanged", size => _boardSize = size);
         _hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", UpdatePlayerState);
@@ -101,6 +105,7 @@ public partial class Play : IAsyncDisposable
             _expectedPlayers = lobbyState.ExpectedPlayers;
             _boardSize = lobbyState.BoardSize;
             await OutputTextAsync($"Found existing lobby. Waiting for more players, currently {_currentPlayers}/{_expectedPlayers}.", clear: true, 100, 100);
+            await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
         }
         else
         {
@@ -109,7 +114,7 @@ public partial class Play : IAsyncDisposable
 
         var name = "pilchie";
         _id = await _hubConnection.InvokeAsync<string>("JoinGame", name);
-        await OutputTextAsync($"Joining game as {name}.", true, 100, 100);
+        await OutputTextAsync($"Joining game as {name}.", false, 100, 50);
     }
 
     private async ValueTask OutputTextAsync(string text, bool clear, int x, int y)
@@ -218,6 +223,13 @@ public partial class Play : IAsyncDisposable
         {
             await _hubConnection.InvokeAsync("TurnRight");
         }
+        else if (keyCode == (int)Keys.Enter)
+        {
+            if (_gameState == GameState.Lobby)
+            {
+                await _hubConnection.SendAsync("StartGame");
+            }
+        }
     }
 
     [JSInvokable]
@@ -240,6 +252,7 @@ public partial class Play : IAsyncDisposable
 
 public enum Keys
 {
+    Enter = 13,
     Up = 38,
     Left = 37,
     Down = 40,
