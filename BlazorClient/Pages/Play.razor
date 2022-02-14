@@ -1,0 +1,23 @@
+﻿@page "/Play"
+@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions.Canvas.Canvas2D
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject ILogger<Play> Logger
+
+<PageTitle>Sneks!</PageTitle>
+
+<div id="canvasContainer" style="position: fixed; opacity: 1; background-color: black; width: 100%; height: 100%">
+    <BECanvas @ref="_canvas"></BECanvas>
+</div>
+
+<img @ref="_blueSquare" hidden src="assets/bluesquare.png" />
+<img @ref="_darkBlueSquare" hidden src="assets/darkbluesquare.png" />
+<img @ref="_greenSquare" hidden src="assets/greensquare.png" />
+<img @ref="_darkGreenSquare" hidden src="assets/darkgreensquare.png" />
+<img @ref="_orangeSquare" hidden src="assets/orangesquare.png" />
+<img @ref="_darkOrangeSquare" hidden src="assets/darkorangesquare.png" />
+<img @ref="_redSquare" hidden src="assets/redsquare.png" />

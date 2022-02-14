@@ -11,9 +11,12 @@ WORKDIR /src
 COPY ["HubAndHost/HubAndHost.csproj", "HubAndHost/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["SharedTypes/SharedTypes.csproj", "SharedTypes/"]
+COPY ["BlazorClient/BlazorClient.csproj", "BlazorClient/"]
 COPY ["ConsoleSnake/ConsoleSnake.csproj", "ConsoleSnake/"]
-RUN dotnet restore "HubAndHost/HubAndHost.csproj"
 RUN dotnet restore "ConsoleSnake/ConsoleSnake.csproj"
+RUN dotnet restore "BlazorClient/BlazorClient.csproj"
+RUN dotnet restore "HubAndHost/HubAndHost.csproj"
+
 COPY . .
 WORKDIR "/src/HubAndHost"
 RUN dotnet publish --no-restore "HubAndHost.csproj" -c Release -o /app/publish /p:GitSha=${GIT_SHA}

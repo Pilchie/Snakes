@@ -1,0 +1,71 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@namespace Snakes.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Snekz!</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="BlazorClient.styles.css" rel="stylesheet" />
+    <component type="typeof(HeadOutlet)" render-mode="WebAssemblyPrerendered" />
+</head>
+<body>
+    @RenderBody()
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <persist-component-state />
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js"></script>
+
+    <script>
+        function gameLoop(timeStamp) {
+            window.requestAnimationFrame(gameLoop);
+            game.instance.invokeMethodAsync('GameLoop');
+        }
+
+        function onResize() {
+            if (!window.game.canvas)
+                return;
+
+            game.canvas.width = window.innerWidth;
+            game.canvas.height = window.innerHeight;
+
+            game.instance.invokeMethodAsync('OnResize', window.innerWidth, window.innerHeight)
+        }
+
+        window.initGame = (instance) => {
+            var canvasContainer = document.getElementById('canvasContainer'),
+            canvases = canvasContainer.getElementsByTagName('canvas') || [];
+            window.game = {
+                instance: instance,
+                canvas: canvases.length ? canvases[0] : null
+            };
+
+            window.onkeydown = (e) => {
+                game.instance.invokeMethodAsync('OnKeyDown', e.keyCode);
+            };
+
+            window.addEventListener("resize", onResize);
+            onResize();
+
+            window.requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
