@@ -134,7 +134,7 @@ public partial class Play : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async ValueTask GameLoop(float timeStamp, int screenWidth, int screenHeight)
+    public async ValueTask GameLoop()
     {
         await Render();
     }

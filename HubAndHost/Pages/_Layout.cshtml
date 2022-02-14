@@ -36,8 +36,7 @@
     <script>
         function gameLoop(timeStamp) {
             window.requestAnimationFrame(gameLoop);
-            game.instance.invokeMethodAsync('GameLoop', timeStamp,
-                game.canvas.width, game.canvas.height);
+            game.instance.invokeMethodAsync('GameLoop');
         }
 
         function onResize() {
