@@ -134,7 +134,7 @@ public partial class Play : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async ValueTask GameLoop()
+    public async Task GameLoop()
     {
         await Render();
     }
@@ -208,7 +208,7 @@ public partial class Play : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async ValueTask OnKeyDown(int keyCode)
+    public async Task OnKeyDown(int keyCode)
     {
         if (_hubConnection is null)
         {
