@@ -9,11 +9,11 @@ A "Snakes" game implemented using various .NET technologies.
 You are the blue snake. Turn left/right with your arrow keys. Eat the berries, and avoid the walls and the other snakes. Be the last snake left standing.
 
 ## Status
-Currently there is a multi-player game with a Console Client.
+Currently there is a multi-player game with a Console Client, and a Blazor client.
 
 ## Roadmap
 * Make multiple clients:
-    * Blazor
+    * Test/fix PWA support for Blazor client
     * MAUI
     * Winforms
 
