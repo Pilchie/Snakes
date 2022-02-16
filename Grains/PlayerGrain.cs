@@ -2,7 +2,6 @@
 using Orleans;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,7 +10,7 @@ namespace Snakes;
 public class PlayerGrain : Grain, IPlayer
 {
     private readonly List<Point> _body = new(5);
-    private Size _boardSize;
+    private Size _boardSize = new();
     private Point? _last;
     private int _score;
     private bool _isAlive = true;
@@ -94,7 +93,7 @@ public class PlayerGrain : Grain, IPlayer
         _score++;
         if (_last is not null)
         {
-            _body.Add(_last.Value);
+            _body.Add(_last);
         }
         return Task.CompletedTask;
     }

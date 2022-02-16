@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Orleans;
-using System.Drawing;
 
 namespace Snakes;
 

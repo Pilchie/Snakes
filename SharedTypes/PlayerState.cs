@@ -1,6 +1,4 @@
-﻿using System.Drawing;
-
-namespace Snakes;
+﻿namespace Snakes;
 
 public record PlayerState(
     string Id,

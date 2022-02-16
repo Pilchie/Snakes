@@ -34,9 +34,13 @@
     <script src="_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js"></script>
 
     <script>
-        function gameLoop(timeStamp) {
+        async function gameLoop(timeStamp) {
             window.requestAnimationFrame(gameLoop);
-            game.instance.invokeMethodAsync('GameLoop');
+            await game.instance.invokeMethodAsync('GameLoop');
+        }
+
+        async function onKeyDown(e) {
+            await game.instance.invokeMethodAsync('OnKeyDown', e.keyCode);
         }
 
         function onResize() {
@@ -46,7 +50,7 @@
             game.canvas.width = window.innerWidth;
             game.canvas.height = window.innerHeight;
 
-            game.instance.invokeMethodAsync('OnResize', window.innerWidth, window.innerHeight)
+            game.instance.invokeMethod('OnResize', window.innerWidth, window.innerHeight)
         }
 
         window.initGame = (instance) => {
@@ -57,11 +61,10 @@
                 canvas: canvases.length ? canvases[0] : null
             };
 
-            window.onkeydown = (e) => {
-                game.instance.invokeMethodAsync('OnKeyDown', e.keyCode);
-            };
-
+            window.addEventListener("keydown", onKeyDown)
             window.addEventListener("resize", onResize);
+
+            // Call once to set initial state.
             onResize();
 
             window.requestAnimationFrame(gameLoop);

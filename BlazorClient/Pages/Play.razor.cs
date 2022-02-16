@@ -4,7 +4,6 @@ using Blazor.Extensions.Canvas.Canvas2D;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.JSInterop;
-using System.Drawing;
 
 namespace Snakes.Client.Pages;
 
@@ -13,18 +12,11 @@ public partial class Play : IAsyncDisposable
     BECanvas? _canvas;
     Canvas2DContext? _context;
     HubConnection? _hubConnection;
-    ElementReference _blueSquare;
-    ElementReference _darkBlueSquare;
-    ElementReference _greenSquare;
-    ElementReference _darkGreenSquare;
-    ElementReference _orangeSquare;
-    ElementReference _darkOrangeSquare;
-    ElementReference _redSquare;
 
     private int _expectedPlayers;
     private int _currentPlayers;
     private GameState _gameState;
-    private Size _boardSize;
+    private Size _boardSize = new();
     private bool _alive = true;
     private int _score;
     private string _id = "";
@@ -84,7 +76,11 @@ public partial class Play : IAsyncDisposable
             await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
 
         });
-        _hubConnection.On<Size>("OnBoardSizeChanged", size => _boardSize = size);
+        _hubConnection.On<Size>("OnBoardSizeChanged", async size =>
+        {
+            _boardSize = size;
+            await OutputTextAsync($"Board size changed to {_boardSize}", clear: true, 100, 100);
+        });
         _hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", UpdatePlayerState);
 
         _hubConnection.On<string>("OnDied", id => _alive = false);
@@ -104,7 +100,7 @@ public partial class Play : IAsyncDisposable
             _currentPlayers = lobbyState.CurrentPlayers;
             _expectedPlayers = lobbyState.ExpectedPlayers;
             _boardSize = lobbyState.BoardSize;
-            await OutputTextAsync($"Found existing lobby. Waiting for more players, currently {_currentPlayers}/{_expectedPlayers}.", clear: true, 100, 100);
+            await OutputTextAsync($"Found existing lobby, game size {_boardSize}. Waiting for more players, currently {_currentPlayers}/{_expectedPlayers}.", clear: true, 100, 100);
             await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
         }
         else
@@ -124,17 +120,25 @@ public partial class Play : IAsyncDisposable
             throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
         }
 
-        if (clear)
+        await _context.BeginBatchAsync();
+        try
         {
-            await _context.ClearRectAsync(0, 0, _width, _height);
+            if (clear)
+            {
+                await _context.ClearRectAsync(0, 0, _width, _height);
+            }
+            await _context.SetStrokeStyleAsync("white");
+            await _context.SetFontAsync("24px ver2dana");
+            await _context.StrokeTextAsync(text, x, y);
         }
-        await _context.SetStrokeStyleAsync("white");
-        await _context.SetFontAsync("24px ver2dana");
-        await _context.StrokeTextAsync(text, x, y);
+        finally
+        {
+            await _context.EndBatchAsync();
+        }
     }
 
     [JSInvokable]
-    public async ValueTask GameLoop()
+    public async Task GameLoop()
     {
         await Render();
     }
@@ -155,36 +159,54 @@ public partial class Play : IAsyncDisposable
 
             _lastRenderedRound = _currentRound;
 
-            await _context.ClearRectAsync(0, 0, _width, _height);
-
-            var xscale = _width / _boardSize.Width;
-            var yscale = _height / _boardSize.Height;
-            foreach (var p in _players)
+            await _context.BeginBatchAsync();
+            try
             {
-                if (p.Id == _id)
-                {
-                    await DrawPlayer(p, _blueSquare, _darkBlueSquare, xscale, yscale);
-                }
-                else if (p.HumanControlled)
-                {
-                    await DrawPlayer(p, _orangeSquare, _darkOrangeSquare, xscale, yscale);
-                }
-                else
-                {
-                    await DrawPlayer(p, _greenSquare, _darkGreenSquare, xscale, yscale);
-                }
-            }
+                await _context.ClearRectAsync(0, 0, _width, _height);
 
-            foreach (var b in _berries)
+                if (_boardSize.Width <= 0)
+                {
+                    throw new Exception($"_boardSize.Width is {_boardSize.Width}");
+                }
+                if (_boardSize.Height <= 0)
+                {
+                    throw new Exception($"_boardSize.Height is {_boardSize.Height}");
+                }
+                var xscale = _width / _boardSize.Width;
+                var yscale = _height / _boardSize.Height;
+
+                foreach (var p in _players)
+                {
+                    if (p.Id == _id)
+                    {
+                        await DrawPlayer(p, "blue", "darkblue", xscale, yscale);
+                    }
+                    else if (p.HumanControlled)
+                    {
+                        await DrawPlayer(p, "orange", "darkorange", xscale, yscale);
+                    }
+                    else
+                    {
+                        await DrawPlayer(p, "green", "darkgreen", xscale, yscale);
+                    }
+                }
+
+                foreach (var b in _berries)
+                {
+                    await _context.SetFillStyleAsync("red");
+                    await _context.FillRectAsync(b.X * xscale, b.Y * yscale, xscale, yscale);
+                }
+
+                await OutputTextAsync($"Score: {_score}", clear: false, 5, 50);
+            }
+            finally
             {
-                await _context.DrawImageAsync(this._redSquare, b.X * xscale, b.Y * yscale, xscale, yscale);
+                await _context.EndBatchAsync();
             }
-
-            await OutputTextAsync($"Score: {_score}", clear: false, 5, 50);
         }
     }
 
-    async Task DrawPlayer(PlayerState player, ElementReference headColor, ElementReference tailColor, int width, int height)
+    async Task DrawPlayer(PlayerState player, string headColor, string tailColor, int width, int height)
     {
         if (_context is null)
         {
@@ -192,10 +214,12 @@ public partial class Play : IAsyncDisposable
         }
 
         var head = player.Body[0];
-        await _context.DrawImageAsync(headColor, head.X * width, head.Y * height, width, height);
+        await _context.SetFillStyleAsync(headColor);
+        await _context.FillRectAsync(head.X * width, head.Y * height, width, height);
+        await _context.SetFillStyleAsync(tailColor);
         foreach (var b in player.Body.Skip(1))
         {
-            await _context.DrawImageAsync(tailColor, b.X * width, b.Y * height, width, height);
+            await _context.FillRectAsync(b.X * width, b.Y * height, width, height);
 
         }
     }
@@ -208,7 +232,7 @@ public partial class Play : IAsyncDisposable
     }
 
     [JSInvokable]
-    public async ValueTask OnKeyDown(int keyCode)
+    public async Task OnKeyDown(int keyCode)
     {
         if (_hubConnection is null)
         {

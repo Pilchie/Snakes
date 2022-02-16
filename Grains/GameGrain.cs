@@ -2,10 +2,7 @@
 using Orleans;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Snakes;
@@ -15,7 +12,7 @@ public class GameGrain : Grain, IGame
     private readonly ObserverManager<IGameObserver> _subscriptionManager;
     private readonly List<Point> _berries = new();
     private readonly List<IPlayer> _players = new();
-    private Size _boardSize;
+    private Size _boardSize = new();
     private int _expectedPlayers;
     private GameState _currentState = GameState.NoGame;
     private IDisposable? _timerHandle;
