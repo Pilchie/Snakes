@@ -120,13 +120,21 @@ public partial class Play : IAsyncDisposable
             throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
         }
 
-        if (clear)
+        await _context.BeginBatchAsync();
+        try
         {
-            await _context.ClearRectAsync(0, 0, _width, _height);
+            if (clear)
+            {
+                await _context.ClearRectAsync(0, 0, _width, _height);
+            }
+            await _context.SetStrokeStyleAsync("white");
+            await _context.SetFontAsync("24px ver2dana");
+            await _context.StrokeTextAsync(text, x, y);
         }
-        await _context.SetStrokeStyleAsync("white");
-        await _context.SetFontAsync("24px ver2dana");
-        await _context.StrokeTextAsync(text, x, y);
+        finally
+        {
+            await _context.EndBatchAsync();
+        }
     }
 
     [JSInvokable]
@@ -208,9 +216,9 @@ public partial class Play : IAsyncDisposable
         var head = player.Body[0];
         await _context.SetFillStyleAsync(headColor);
         await _context.FillRectAsync(head.X * width, head.Y * height, width, height);
+        await _context.SetFillStyleAsync(tailColor);
         foreach (var b in player.Body.Skip(1))
         {
-            await _context.SetFillStyleAsync(tailColor);
             await _context.FillRectAsync(b.X * width, b.Y * height, width, height);
 
         }
