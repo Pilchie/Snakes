@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 using Snakes;
 using Spectre.Console;
-using System.Collections.Generic;
-using System.Drawing;
 
 using Color = Spectre.Console.Color;
 
@@ -14,7 +12,7 @@ AnsiConsole.Background = Color.Black;
 var gameState = GameState.NoGame;
 var currentPlayers = 0;
 var expectedPlayers = 0;
-var boardSize = Size.Empty;
+var boardSize = new Size();
 var alive = true;
 var score = 0;
 var id = "";
