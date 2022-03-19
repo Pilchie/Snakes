@@ -24,8 +24,10 @@ public partial class Play : IAsyncDisposable
     private int _lastRenderedRound = 0;
     IList<PlayerState> _players = new List<PlayerState>();
     IEnumerable<Point> _berries = Array.Empty<Point>();
+    private Point _mouseCoords = new();
     private int _width;
     private int _height;
+    private bool _missedStart;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -45,10 +47,13 @@ public partial class Play : IAsyncDisposable
         _hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => _lobbyState = _lobbyState with { ExpectedPlayers = newCount });
         _hubConnection.On<GameState>("OnStateChanged", async state =>
         {
+            _missedStart = false;
             switch (state)
             {
                 case GameState.NoGame:
                     await OutputTextAsync($"Game over! You {(_alive ? "won" : "lost")}!", clear: false, 100, 200);
+                    await DrawPlayAgain();
+
                     break;
                 case GameState.Lobby:
                     await DrawLobby();
@@ -60,7 +65,9 @@ public partial class Play : IAsyncDisposable
                     }
                     else if (_gameState == GameState.NoGame)
                     {
+                        _missedStart = true;
                         await OutputTextAsync($"Another game is already in progress, try again later", clear: true, 100, 100);
+                        await DrawPlayAgain();
                     }
                     break;
             }
@@ -102,6 +109,28 @@ public partial class Play : IAsyncDisposable
         _id = await _hubConnection.InvokeAsync<string>("JoinGame", _playerName);
     }
 
+    private async Task DrawPlayAgain()
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
+        }
+
+        await _context.BeginBatchAsync();
+        try
+        {
+            var playText = "Play again";
+            var playMetrics = await _context.MeasureTextAsync(playText);
+            await _context.SetFillStyleAsync("darkgreen");
+            await _context.FillRectAsync(_width / 2 - 100, _height / 2 - 50, 200, 100);
+            await OutputTextAsync(playText, clear: false, (int)(_width - playMetrics.Width) / 2, _height / 2);
+        }
+        finally
+        {
+            await _context.EndBatchAsync();
+        }
+    }
+
     private async ValueTask DrawLobby()
     {
         if (_context is null)
@@ -113,18 +142,24 @@ public partial class Play : IAsyncDisposable
         try
         {
             await _context.ClearRectAsync(0, 0, _width, _height);
+            await _context.SetFillStyleAsync("darkgreen");
+            await _context.FillRectAsync(0, _height - 100, _width, _height);
+
             await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("24px ver2dana");
 
             await _context.FillTextAsync($"Joined ({_lobbyState.BoardSize.Width},{_lobbyState.BoardSize.Height}) game as {_playerName}.", 100, 100);
             await _context.FillTextAsync($"Waiting for players, currently {_lobbyState.CurrentPlayers}/{_lobbyState.ExpectedPlayers}", 100, 150);
-            await _context.FillTextAsync($"Press enter to start with NPCs for remaining players.", 100, 200);
+            await _context.FillTextAsync($"Press enter or touch below to start with NPCs for remaining players.", 100, 200);
 
             await _context.FillTextAsync("Instructions:", 100, 300);
             await _context.FillTextAsync("You are blue, other humans are orange, NPCs are green", 150, 350);
             await _context.FillTextAsync("Use left/right keys to change your direction", 150, 400);
             await _context.FillTextAsync("Collect cherries, but don't hit the edge, yourself, or another snake", 150, 450);
             await _context.FillTextAsync("Be the last snake left alive to win!", 150, 500);
+            const string startText = "Start Game!";
+            var startMetrics = await _context.MeasureTextAsync(startText);
+            await _context.FillTextAsync(startText, (int)(_width - startMetrics.Width) / 2, _height - 50);
         }
         finally
         {
@@ -232,7 +267,7 @@ public partial class Play : IAsyncDisposable
                 var scoreMetrics = await _context.MeasureTextAsync(scoreText);
                 var rightMetrics = await _context.MeasureTextAsync(rightText);
 
-                await OutputTextAsync(leftText, false, (int)((50 - leftMetrics.Width) / 2), _height - 50);
+                await OutputTextAsync(leftText, false, 50 - (int)leftMetrics.Width / 2, _height - 50);
                 await OutputTextAsync(scoreText, clear: false, (int)((_width - scoreMetrics.Width) / 2), _height - 50);
                 await OutputTextAsync(rightText, false, _width - 50 - (int)rightMetrics.Width / 2, _height - 50);
             }
@@ -257,7 +292,6 @@ public partial class Play : IAsyncDisposable
         foreach (var b in player.Body.Skip(1))
         {
             await _context.FillRectAsync(xoffset + b.X * width, yoffset + b.Y * height, width, height);
-
         }
     }
 
@@ -300,6 +334,46 @@ public partial class Play : IAsyncDisposable
         _height = height;
     }
 
+    [JSInvokable]
+    public void OnMouseMove(int mouseX, int mouseY)
+    {
+        _mouseCoords = new Point(mouseX, mouseY);
+    }
+
+    [JSInvokable]
+    public async Task OnMouseDown(MouseButton button)
+    {
+        if (_hubConnection is null || button != MouseButton.Left)
+        {
+            return;
+        }
+
+        if (_mouseCoords.Y > _height - 100 && _mouseCoords.Y < _height)
+        {
+            if (_mouseCoords.X > 0 && _mouseCoords.X < 100)
+            {
+                await _hubConnection.InvokeAsync("TurnLeft");
+            }
+            else if (_mouseCoords.X > _width - 100 && _mouseCoords.X < _width)
+            {
+                await _hubConnection.InvokeAsync("TurnRight");
+            }
+            else if (_gameState == GameState.Lobby)
+            {
+                await _hubConnection.SendAsync("StartGame");
+            }
+        }
+        else if (_gameState == GameState.NoGame ||
+            (_gameState == GameState.InProgress && _missedStart))
+        {
+            if (_mouseCoords.X > _width / 2 - 100 && _mouseCoords.X < _width / 2 + 100 &&
+                _mouseCoords.Y > _height / 2 - 50 && _mouseCoords.Y < _height / 2 + 50)
+            {
+                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+            }
+        }
+    }
+
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
     public async ValueTask DisposeAsync()
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
@@ -321,4 +395,11 @@ public enum Keys
     Space = 32,
     LeftCtrl = 17,
     LeftAlt = 18,
+}
+
+public enum MouseButton
+{
+    Left = 0,
+    Middle = 1,
+    Right = 2
 }
