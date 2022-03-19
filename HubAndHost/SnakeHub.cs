@@ -43,6 +43,7 @@ public class GameObserver : IGameObserver
         {
             players.Add(new PlayerState(
                 p.GetPrimaryKeyString(),
+                await p.GetName(),
                 await p.IsHumanControlled(),
                 await p.GetBody()));
         }
@@ -116,6 +117,7 @@ public class SnakeHub : Hub<IGameObserver>
         var game = _clusterClient.GetGrain<IGame>(Guid.Empty);
         var self = _clusterClient.GetGrain<IPlayer>(Context.ConnectionId);
         await self.SetHumanControlled(true);
+        await self.SetName(playerName);
         await self.JoinGame(game);
         return self.GetPrimaryKeyString();
     }

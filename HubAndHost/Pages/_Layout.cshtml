@@ -43,6 +43,14 @@
             await game.instance.invokeMethodAsync('OnKeyDown', e.keyCode);
         }
 
+        async function onMouseDown(e) {
+            await game.instance.invokeMethodAsync('OnMouseDown', e.button);
+        }
+
+        function onMouseMove(e) {
+            game.instance.invokeMethod('OnMouseMove', e.clientX, e.clientY);
+        }
+
         function onResize() {
             if (!window.game.canvas)
                 return;
@@ -62,6 +70,8 @@
             };
 
             window.addEventListener("keydown", onKeyDown)
+            window.addEventListener("mousedown", onMouseDown);
+            window.addEventListener("mousemove", onMouseMove);
             window.addEventListener("resize", onResize);
 
             // Call once to set initial state.
