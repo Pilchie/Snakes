@@ -127,9 +127,9 @@ public partial class Play : IAsyncDisposable
             {
                 await _context.ClearRectAsync(0, 0, _width, _height);
             }
-            await _context.SetStrokeStyleAsync("white");
+            await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("24px ver2dana");
-            await _context.StrokeTextAsync(text, x, y);
+            await _context.FillTextAsync(text, x, y);
         }
         finally
         {
