@@ -9,14 +9,14 @@ namespace Snakes.Client.Pages;
 
 public partial class Play : IAsyncDisposable
 {
+    private readonly string _playerName = "Pilchie";
+
     BECanvas? _canvas;
     Canvas2DContext? _context;
     HubConnection? _hubConnection;
 
-    private int _expectedPlayers;
-    private int _currentPlayers;
+    private LobbyState _lobbyState = new(0, 5, new Size(96, 24));
     private GameState _gameState;
-    private Size _boardSize = new();
     private bool _alive = true;
     private int _score;
     private string _id = "";
@@ -42,7 +42,7 @@ public partial class Play : IAsyncDisposable
             .WithAutomaticReconnect()
             .Build();
 
-        _hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => _expectedPlayers = newCount);
+        _hubConnection.On<int>("OnExpectedPlayerCountChanged", newCount => _lobbyState = _lobbyState with { ExpectedPlayers = newCount });
         _hubConnection.On<GameState>("OnStateChanged", async state =>
         {
             switch (state)
@@ -51,9 +51,7 @@ public partial class Play : IAsyncDisposable
                     await OutputTextAsync($"Game over! You {(_alive ? "won" : "lost")}!", clear: false, 100, 200);
                     break;
                 case GameState.Lobby:
-                    await OutputTextAsync($"Waiting for enough players, currently {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 100);
-                    await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
-
+                    await DrawLobby();
                     break;
                 case GameState.InProgress:
                     if (_gameState == GameState.Lobby)
@@ -71,15 +69,14 @@ public partial class Play : IAsyncDisposable
         });
         _hubConnection.On<int>("OnPlayerJoined", async count =>
         {
-            _currentPlayers = count;
-            await OutputTextAsync($"Waiting for enough players, now {_currentPlayers}/{_expectedPlayers}", clear: true, 100, 100);
-            await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
+            _lobbyState = _lobbyState with { CurrentPlayers = count };
+            await DrawLobby();
 
         });
         _hubConnection.On<Size>("OnBoardSizeChanged", async size =>
         {
-            _boardSize = size;
-            await OutputTextAsync($"Board size changed to {_boardSize}", clear: true, 100, 100);
+            _lobbyState = _lobbyState with { BoardSize = size };
+            await DrawLobby();
         });
         _hubConnection.On<IList<PlayerState>, IEnumerable<Point>>("OnNewRound", UpdatePlayerState);
 
@@ -90,27 +87,49 @@ public partial class Play : IAsyncDisposable
         _gameState = await _hubConnection.InvokeAsync<GameState>("GetCurrentState");
         if (_gameState == GameState.NoGame)
         {
-            var desiredCount = 5;
-            await _hubConnection.InvokeAsync("InitializeNewGame", new Size(96, 24), desiredCount);
-            await OutputTextAsync($"Starting new game with {desiredCount} players.", clear: true, 100, 100);
+            await _hubConnection.InvokeAsync("InitializeNewGame", _lobbyState.BoardSize, _lobbyState.ExpectedPlayers); ;
         }
         else if (_gameState == GameState.Lobby)
         {
-            var lobbyState = await _hubConnection.InvokeAsync<LobbyState>("GetLobbyState");
-            _currentPlayers = lobbyState.CurrentPlayers;
-            _expectedPlayers = lobbyState.ExpectedPlayers;
-            _boardSize = lobbyState.BoardSize;
-            await OutputTextAsync($"Found existing lobby, game size {_boardSize}. Waiting for more players, currently {_currentPlayers}/{_expectedPlayers}.", clear: true, 100, 100);
-            await OutputTextAsync("Press enter to start with NPCs", clear: false, x: 100, y: 200);
+            _lobbyState = await _hubConnection.InvokeAsync<LobbyState>("GetLobbyState");
+            await DrawLobby();
         }
         else
         {
             Logger.LogError("Game in unpected state {gameState}. Try running again.", _gameState);
         }
 
-        var name = "pilchie";
-        _id = await _hubConnection.InvokeAsync<string>("JoinGame", name);
-        await OutputTextAsync($"Joining game as {name}.", false, 100, 50);
+        _id = await _hubConnection.InvokeAsync<string>("JoinGame", _playerName);
+    }
+
+    private async ValueTask DrawLobby()
+    {
+        if (_context is null)
+        {
+            throw new InvalidOperationException($"'{nameof(_context)}' shouldn't be null.");
+        }
+
+        await _context.BeginBatchAsync();
+        try
+        {
+            await _context.ClearRectAsync(0, 0, _width, _height);
+            await _context.SetFillStyleAsync("white");
+            await _context.SetFontAsync("24px ver2dana");
+
+            await _context.FillTextAsync($"Joined ({_lobbyState.BoardSize.Width},{_lobbyState.BoardSize.Height}) game as {_playerName}.", 100, 100);
+            await _context.FillTextAsync($"Waiting for players, currently {_lobbyState.CurrentPlayers}/{_lobbyState.ExpectedPlayers}", 100, 150);
+            await _context.FillTextAsync($"Press enter to start with NPCs for remaining players.", 100, 200);
+
+            await _context.FillTextAsync("Instructions:", 100, 300);
+            await _context.FillTextAsync("You are blue, other humans are orange, NPCs are green", 150, 350);
+            await _context.FillTextAsync("Use left/right keys to change your direction", 150, 400);
+            await _context.FillTextAsync("Collect cherries, but don't hit the edge or another snake", 150, 450);
+            await _context.FillTextAsync("Be the last snake left alive to win!", 150, 500);
+        }
+        finally
+        {
+            await _context.EndBatchAsync();
+        }
     }
 
     private async ValueTask OutputTextAsync(string text, bool clear, int x, int y)
@@ -164,16 +183,16 @@ public partial class Play : IAsyncDisposable
             {
                 await _context.ClearRectAsync(0, 0, _width, _height);
 
-                if (_boardSize.Width <= 0)
+                if (_lobbyState.BoardSize.Width <= 0)
                 {
-                    throw new Exception($"_boardSize.Width is {_boardSize.Width}");
+                    throw new Exception($"_boardSize.Width is {_lobbyState.BoardSize.Width}");
                 }
-                if (_boardSize.Height <= 0)
+                if (_lobbyState.BoardSize.Height <= 0)
                 {
-                    throw new Exception($"_boardSize.Height is {_boardSize.Height}");
+                    throw new Exception($"_boardSize.Height is {_lobbyState.BoardSize.Height}");
                 }
-                var xscale = _width / _boardSize.Width;
-                var yscale = _height / _boardSize.Height;
+                var xscale = _width / _lobbyState.BoardSize.Width;
+                var yscale = _height / _lobbyState.BoardSize.Height;
 
                 foreach (var p in _players)
                 {

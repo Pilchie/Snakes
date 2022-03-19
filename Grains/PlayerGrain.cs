@@ -16,6 +16,7 @@ public class PlayerGrain : Grain, IPlayer
     private bool _isAlive = true;
     private bool _humanControlled;
     private Direction _direction;
+    private string _name = string.Empty;
 
     public async Task JoinGame(IGame game)
     {
@@ -107,6 +108,15 @@ public class PlayerGrain : Grain, IPlayer
     public Task SetHumanControlled(bool humanControlled)
     {
         _humanControlled = humanControlled;
+        return Task.CompletedTask;
+    }
+
+    public Task<string> GetName()
+        => Task.FromResult(_name);
+
+    public Task SetName(string name)
+    {
+        _name = name;
         return Task.CompletedTask;
     }
 }

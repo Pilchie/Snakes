@@ -32,4 +32,7 @@ public interface IPlayer : IGrainWithStringKey
     Task<bool> IsHumanControlled();
 
     Task SetHumanControlled(bool humanControlled);
+
+    Task SetName(string name);
+    Task<string> GetName();
 }
