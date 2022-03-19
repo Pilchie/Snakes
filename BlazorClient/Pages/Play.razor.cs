@@ -123,7 +123,7 @@ public partial class Play : IAsyncDisposable
             await _context.FillTextAsync("Instructions:", 100, 300);
             await _context.FillTextAsync("You are blue, other humans are orange, NPCs are green", 150, 350);
             await _context.FillTextAsync("Use left/right keys to change your direction", 150, 400);
-            await _context.FillTextAsync("Collect cherries, but don't hit the edge or another snake", 150, 450);
+            await _context.FillTextAsync("Collect cherries, but don't hit the edge, yourself, or another snake", 150, 450);
             await _context.FillTextAsync("Be the last snake left alive to win!", 150, 500);
         }
         finally
@@ -191,32 +191,50 @@ public partial class Play : IAsyncDisposable
                 {
                     throw new Exception($"_boardSize.Height is {_lobbyState.BoardSize.Height}");
                 }
-                var xscale = _width / _lobbyState.BoardSize.Width;
-                var yscale = _height / _lobbyState.BoardSize.Height;
+                var xscale = (_width - 2) / _lobbyState.BoardSize.Width;
+                var yscale = (_height - 102) / _lobbyState.BoardSize.Height;
 
+                var extrax = _width - _lobbyState.BoardSize.Width * xscale;
+                var extray = _height - 100 - _lobbyState.BoardSize.Height * yscale;
+
+                await _context.SetStrokeStyleAsync("yellow");
+                await _context.StrokeRectAsync(extrax / 2, extray / 2, _lobbyState.BoardSize.Width * xscale + 1, _lobbyState.BoardSize.Height * yscale + 1);
                 foreach (var p in _players)
                 {
                     if (p.Id == _id)
                     {
-                        await DrawPlayer(p, "blue", "darkblue", xscale, yscale);
+                        await DrawPlayer(p, "blue", "darkblue", extrax / 2 + 1, extray / 2 + 1, xscale, yscale);
                     }
                     else if (p.HumanControlled)
                     {
-                        await DrawPlayer(p, "orange", "darkorange", xscale, yscale);
+                        await DrawPlayer(p, "orange", "darkorange", extrax / 2 + 1, extray / 2 + 1, xscale, yscale);
                     }
                     else
                     {
-                        await DrawPlayer(p, "green", "darkgreen", xscale, yscale);
+                        await DrawPlayer(p, "green", "darkgreen", extrax / 2 + 1, extray / 2 + 1, xscale, yscale);
                     }
                 }
 
                 foreach (var b in _berries)
                 {
                     await _context.SetFillStyleAsync("red");
-                    await _context.FillRectAsync(b.X * xscale, b.Y * yscale, xscale, yscale);
+                    await _context.FillRectAsync(extrax / 2 + 1 + b.X * xscale, extray / 2 + 1 + b.Y * yscale, xscale, yscale);
                 }
 
-                await OutputTextAsync($"Score: {_score}", clear: false, 5, 50);
+                await _context.SetFillStyleAsync("purple");
+                await _context.FillRectAsync(0, _height - 100, 100, 100);
+                await _context.FillRectAsync(_width - 100, _height - 100, 100, 100);
+
+                var leftText = "◀";
+                var scoreText = $"{_playerName}'s score: {_score}";
+                var rightText = "▶";
+                var leftMetrics = await _context.MeasureTextAsync(leftText);
+                var scoreMetrics = await _context.MeasureTextAsync(scoreText);
+                var rightMetrics = await _context.MeasureTextAsync(rightText);
+
+                await OutputTextAsync(leftText, false, (int)((50 - leftMetrics.Width) / 2), _height - 50);
+                await OutputTextAsync(scoreText, clear: false, (int)((_width - scoreMetrics.Width) / 2), _height - 50);
+                await OutputTextAsync(rightText, false, _width - 50 - (int)rightMetrics.Width / 2, _height - 50);
             }
             finally
             {
@@ -225,7 +243,7 @@ public partial class Play : IAsyncDisposable
         }
     }
 
-    async Task DrawPlayer(PlayerState player, string headColor, string tailColor, int width, int height)
+    async Task DrawPlayer(PlayerState player, string headColor, string tailColor, int xoffset, int yoffset, int width, int height)
     {
         if (_context is null)
         {
@@ -234,11 +252,11 @@ public partial class Play : IAsyncDisposable
 
         var head = player.Body[0];
         await _context.SetFillStyleAsync(headColor);
-        await _context.FillRectAsync(head.X * width, head.Y * height, width, height);
+        await _context.FillRectAsync(xoffset + head.X * width, yoffset + head.Y * height, width, height);
         await _context.SetFillStyleAsync(tailColor);
         foreach (var b in player.Body.Skip(1))
         {
-            await _context.FillRectAsync(b.X * width, b.Y * height, width, height);
+            await _context.FillRectAsync(xoffset + b.X * width, yoffset + b.Y * height, width, height);
 
         }
     }
