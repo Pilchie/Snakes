@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SharedTypes\SharedTypes.csproj" />
+    <ProjectReference Include="..\BlazorUI\BlazorUI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
