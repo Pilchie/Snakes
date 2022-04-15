@@ -57,7 +57,7 @@ jobs:
         with:
           inlineScript: |
             echo "Installing containerapp extension"
-            az extension add --source https://workerappscliextension.blob.core.windows.net/azure-cli-extension/containerapp-0.2.0-py2.py3-none-any.whl --yes
+            az extension add --name containerapp --yes
             echo "Starting Deploying"
             az containerapp update -n sneks-silo -g sneks-rg -i snekscr.azurecr.io/sneks-silo:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
 
@@ -66,6 +66,6 @@ jobs:
         with:
           inlineScript: |
             echo "Installing containerapp extension"
-            az extension add --source https://workerappscliextension.blob.core.windows.net/azure-cli-extension/containerapp-0.2.0-py2.py3-none-any.whl --yes
+            az extension add --name containerapp --yes
             echo "Starting Deploying"
             az containerapp update -n sneks-hub -g sneks-rg -i snekscr.azurecr.io/sneks-hub:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
