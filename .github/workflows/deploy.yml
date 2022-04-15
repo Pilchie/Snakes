@@ -58,8 +58,10 @@ jobs:
           inlineScript: |
             echo "Installing containerapp extension"
             az extension add --name containerapp --yes
+            echo "Setting registry"
+            az containerapp registry set -n sneks-silo -g sneks-rg --server snekscr.azurecr.io --username  ${{ secrets.REGISTRY_USERNAME }} --password ${{ secrets.REGISTRY_PASSWORD }} --debug
             echo "Starting Deploying"
-            az containerapp update -n sneks-silo -g sneks-rg -i snekscr.azurecr.io/sneks-silo:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
+            az containerapp update -n sneks-silo -g sneks-rg --image snekscr.azurecr.io/sneks-silo:${{ github.sha }} --debug
 
       - name: Deploy 'sneks-hub' to containerapp
         uses: azure/CLI@v1
@@ -67,5 +69,7 @@ jobs:
           inlineScript: |
             echo "Installing containerapp extension"
             az extension add --name containerapp --yes
+            echo "Setting registry"
+            az containerapp registry set -n sneks-hub -g sneks-rg --server snekscr.azurecr.io --username  ${{ secrets.REGISTRY_USERNAME }} --password ${{ secrets.REGISTRY_PASSWORD }} --debug
             echo "Starting Deploying"
-            az containerapp update -n sneks-hub -g sneks-rg -i snekscr.azurecr.io/sneks-hub:${{ github.sha }} --registry-login-server snekscr.azurecr.io --registry-username  ${{ secrets.REGISTRY_USERNAME }} --registry-password ${{ secrets.REGISTRY_PASSWORD }} --debug
+            az containerapp update -n sneks-hub -g sneks-rg --image snekscr.azurecr.io/sneks-hub:${{ github.sha }} --debug
