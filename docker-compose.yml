@@ -9,7 +9,7 @@ services:
       args:
         GIT_SHA: compose
     depends_on: [snakessilo]
-    ports: [80,443]
+    ports: [80]
     environment:
       - AzureStorageConnectionString
 
