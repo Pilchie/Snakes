@@ -1,0 +1,8 @@
+﻿@inject NavigationManager NavigationManager
+@inject ILogger<SnakeCanvas> Logger
+@inject IJSRuntime JSRuntime
+
+<div id="canvasContainer" style="position: fixed; opacity: 1; background-color: black; width: 100%; height: 100%">
+    <BECanvas @ref="_canvas"></BECanvas>
+</div>
+

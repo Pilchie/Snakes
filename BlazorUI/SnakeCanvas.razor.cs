@@ -3,11 +3,12 @@ using Blazor.Extensions.Canvas;
 using Blazor.Extensions.Canvas.Canvas2D;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
-namespace Snakes.Client.Pages;
+namespace Snakes.BlazorUI;
 
-public partial class Play : IAsyncDisposable
+public partial class SnakeCanvas : IAsyncDisposable
 {
     private readonly string _playerName = "Pilchie";
 
@@ -28,6 +29,7 @@ public partial class Play : IAsyncDisposable
     private int _width;
     private int _height;
     private bool _missedStart;
+    private GameJsInterop? _gameJsInterop;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -36,7 +38,8 @@ public partial class Play : IAsyncDisposable
             return;
         }
         _context = await _canvas.CreateCanvas2DAsync();
-        await JSRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
+        _gameJsInterop = new GameJsInterop(JSRuntime);
+        await _gameJsInterop.InitializeGame(this);
 
         var hubUrl = NavigationManager.ToAbsoluteUri("/snakehub");
         _hubConnection = new HubConnectionBuilder()
@@ -381,6 +384,11 @@ public partial class Play : IAsyncDisposable
         if (_hubConnection is not null)
         {
             await _hubConnection.DisposeAsync();
+        }
+
+        if (_gameJsInterop is not null)
+        {
+            await _gameJsInterop.DisposeAsync();
         }
     }
 }
