@@ -1,5 +1,5 @@
 export function showPrompt(message) {
-  return prompt(message, 'Type anything here');
+  return prompt(message, '');
 }
 
 async function gameLoop(timeStamp) {
@@ -15,18 +15,18 @@ async function onMouseDown(e) {
     await game.instance.invokeMethodAsync('OnMouseDown', e.button);
 }
 
-function onMouseMove(e) {
-    game.instance.invokeMethod('OnMouseMove', e.clientX, e.clientY);
+async function onMouseMove(e) {
+    await game.instance.invokeMethodAsync('OnMouseMove', e.clientX, e.clientY);
 }
 
-function onResize() {
+async function onResize() {
     if (!window.game.canvas)
         return;
 
     game.canvas.width = window.innerWidth;
     game.canvas.height = window.innerHeight;
 
-    game.instance.invokeMethod('OnResize', window.innerWidth, window.innerHeight)
+    await game.instance.invokeMethodAsync('OnResize', window.innerWidth, window.innerHeight)
 }
 
 export function initGame(instance) {

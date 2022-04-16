@@ -28,7 +28,6 @@ public partial class SnakeCanvas : IAsyncDisposable
     private int _width;
     private int _height;
     private bool _missedStart;
-    private GameJsInterop? _gameJsInterop;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -37,10 +36,9 @@ public partial class SnakeCanvas : IAsyncDisposable
             return;
         }
         _context = await _canvas.CreateCanvas2DAsync();
-        _gameJsInterop = new GameJsInterop(JSRuntime);
-        await _gameJsInterop.InitializeGame(this);
+        await GameJsInterop.InitializeGame(this);
 
-        var hubUrl = NavigationManager.ToAbsoluteUri("/snakehub");
+        var hubUrl = HttpClient?.BaseAddress?.AbsoluteUri + "snakehub";
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
@@ -92,14 +90,14 @@ public partial class SnakeCanvas : IAsyncDisposable
         _hubConnection.On<string>("OnDied", id => _alive = false);
         _hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => _score = newScore);
 
-        _playerName = await _gameJsInterop.Prompt("What's your name?");
+        _playerName = await GameJsInterop.Prompt("What's your name?");
 
         await _hubConnection.StartAsync();
 
         _gameState = await _hubConnection.InvokeAsync<GameState>("GetCurrentState");
         if (_gameState == GameState.NoGame)
         {
-            await _hubConnection.InvokeAsync("InitializeNewGame", _lobbyState.BoardSize, _lobbyState.ExpectedPlayers); ;
+            await _hubConnection.InvokeAsync("InitializeNewGame", _lobbyState.BoardSize, _lobbyState.ExpectedPlayers);
         }
         else if (_gameState == GameState.Lobby)
         {
@@ -333,14 +331,14 @@ public partial class SnakeCanvas : IAsyncDisposable
     }
 
     [JSInvokable]
-    public void OnResize(int width, int height)
+    public async Task OnResize(int width, int height)
     {
         _width = width;
         _height = height;
     }
 
     [JSInvokable]
-    public void OnMouseMove(int mouseX, int mouseY)
+    public async Task OnMouseMove(int mouseX, int mouseY)
     {
         _mouseCoords = new Point(mouseX, mouseY);
     }
@@ -386,11 +384,6 @@ public partial class SnakeCanvas : IAsyncDisposable
         if (_hubConnection is not null)
         {
             await _hubConnection.DisposeAsync();
-        }
-
-        if (_gameJsInterop is not null)
-        {
-            await _gameJsInterop.DisposeAsync();
         }
     }
 }
