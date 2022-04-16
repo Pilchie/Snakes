@@ -10,12 +10,11 @@ namespace Snakes.BlazorUI;
 
 public partial class SnakeCanvas : IAsyncDisposable
 {
-    private readonly string _playerName = "Pilchie";
-
     BECanvas? _canvas;
     Canvas2DContext? _context;
     HubConnection? _hubConnection;
 
+    private string? _playerName;
     private LobbyState _lobbyState = new(0, 5, new Size(96, 24));
     private GameState _gameState;
     private bool _alive = true;
@@ -92,6 +91,9 @@ public partial class SnakeCanvas : IAsyncDisposable
 
         _hubConnection.On<string>("OnDied", id => _alive = false);
         _hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => _score = newScore);
+
+        _playerName = await _gameJsInterop.Prompt("What's your name?");
+
         await _hubConnection.StartAsync();
 
         _gameState = await _hubConnection.InvokeAsync<GameState>("GetCurrentState");
