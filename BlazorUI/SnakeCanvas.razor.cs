@@ -3,18 +3,18 @@ using Blazor.Extensions.Canvas;
 using Blazor.Extensions.Canvas.Canvas2D;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
-namespace Snakes.Client.Pages;
+namespace Snakes.BlazorUI;
 
-public partial class Play : IAsyncDisposable
+public partial class SnakeCanvas : IAsyncDisposable
 {
-    private readonly string _playerName = "Pilchie";
-
     BECanvas? _canvas;
     Canvas2DContext? _context;
     HubConnection? _hubConnection;
 
+    private string? _playerName;
     private LobbyState _lobbyState = new(0, 5, new Size(96, 24));
     private GameState _gameState;
     private bool _alive = true;
@@ -36,9 +36,9 @@ public partial class Play : IAsyncDisposable
             return;
         }
         _context = await _canvas.CreateCanvas2DAsync();
-        await JSRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
+        await GameJsInterop.InitializeGame(this);
 
-        var hubUrl = NavigationManager.ToAbsoluteUri("/snakehub");
+        var hubUrl = HttpClient?.BaseAddress?.AbsoluteUri + "snakehub";
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
@@ -89,12 +89,15 @@ public partial class Play : IAsyncDisposable
 
         _hubConnection.On<string>("OnDied", id => _alive = false);
         _hubConnection.On<string, int>("OnScoreChanged", (id, newScore) => _score = newScore);
+
+        _playerName = await GameJsInterop.Prompt("What's your name?");
+
         await _hubConnection.StartAsync();
 
         _gameState = await _hubConnection.InvokeAsync<GameState>("GetCurrentState");
         if (_gameState == GameState.NoGame)
         {
-            await _hubConnection.InvokeAsync("InitializeNewGame", _lobbyState.BoardSize, _lobbyState.ExpectedPlayers); ;
+            await _hubConnection.InvokeAsync("InitializeNewGame", _lobbyState.BoardSize, _lobbyState.ExpectedPlayers);
         }
         else if (_gameState == GameState.Lobby)
         {
@@ -328,14 +331,14 @@ public partial class Play : IAsyncDisposable
     }
 
     [JSInvokable]
-    public void OnResize(int width, int height)
+    public async Task OnResize(int width, int height)
     {
         _width = width;
         _height = height;
     }
 
     [JSInvokable]
-    public void OnMouseMove(int mouseX, int mouseY)
+    public async Task OnMouseMove(int mouseX, int mouseY)
     {
         _mouseCoords = new Point(mouseX, mouseY);
     }
