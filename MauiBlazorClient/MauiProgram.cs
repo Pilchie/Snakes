@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.WebView.Maui;
-using Snakes.MauiBlazorClient.Data;
+using Snakes.BlazorUI;
 
 namespace Snakes.MauiBlazorClient;
 public static class MauiProgram
@@ -15,8 +15,8 @@ public static class MauiProgram
             });
 
         builder.Services.AddMauiBlazorWebView();
-
-        builder.Services.AddSingleton<WeatherForecastService>();
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://sneks-hub.blueisland-9b5cb61a.eastus2.azurecontainerapps.io") });
+        builder.Services.AddScoped<GameJsInterop>();
 
         return builder.Build();
     }
