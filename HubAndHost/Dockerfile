@@ -10,6 +10,7 @@ WORKDIR /src
 COPY ["HubAndHost/HubAndHost.csproj", "HubAndHost/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["SharedTypes/SharedTypes.csproj", "SharedTypes/"]
+COPY ["BlazorUI/BlazorUI.csproj", "BlazorUI/"]
 COPY ["BlazorClient/BlazorClient.csproj", "BlazorClient/"]
 COPY ["ConsoleSnake/ConsoleSnake.csproj", "ConsoleSnake/"]
 RUN dotnet restore "ConsoleSnake/ConsoleSnake.csproj"
