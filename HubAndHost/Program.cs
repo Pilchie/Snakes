@@ -5,8 +5,20 @@ using Snakes;
 using Microsoft.AspNetCore.SignalR;
 using System.Net;
 using Orleans.Hosting;
+using Microsoft.AspNetCore.DataProtection;
+using Azure.Identity;
+using Microsoft.Extensions.Azure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.AddAzureClientsCore();
+    builder.Services.AddDataProtection()
+        .PersistKeysToAzureBlobStorage(Utilities.GetStorageConnectionString(), "data-protection-container", "data-protection-blob")
+        .ProtectKeysWithAzureKeyVault(new Uri("https://sneks-kv.vault.azure.net/keys/dataprotection-key"), new DefaultAzureCredential());
+}
+
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 builder.Services.AddResponseCompression(opts
