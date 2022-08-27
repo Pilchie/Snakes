@@ -3,14 +3,10 @@ using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Snakes;
-using System.Net;
-using System.Runtime;
 
 try
 {
     var host = await StartSilo();
-    //Console.WriteLine("\n\n Press Enter to terminate...\n\n");
-    //Console.ReadLine();
 
     Console.CancelKeyPress += (s,e) => host.StopAsync(); 
     while (true)
@@ -26,6 +22,7 @@ catch (Exception ex)
 
 static async Task<ISiloHost> StartSilo()
 {
+    var storageConnectionString = await Utilities.GetStorageConnectionString();
     var builder = new SiloHostBuilder()
         .Configure<ClusterOptions>(options =>
 {
@@ -35,7 +32,7 @@ static async Task<ISiloHost> StartSilo()
         .ConfigureEndpoints(siloPort: 11_111, gatewayPort: 30_000)
         .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(PlayerGrain).Assembly).WithReferences())
         .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning).AddJsonConsole())
-        .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(Utilities.GetStorageConnectionString()));
+        .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(storageConnectionString));
 
     var host = builder.Build();
     await host.StartAsync();

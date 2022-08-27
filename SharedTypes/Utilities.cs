@@ -1,27 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 namespace Snakes;
+
 public static class Utilities
 {
-    private const string AzureStorageEnvVarName2 = "AzureStorageConnectionString";
-    private const string AzureStorageEnvVarName1 = "azure-storage-connection-string";
+    public const string AzureKeyvaultUrl = "https://sneks-kv.vault.azure.net/";
+    private const string AzureStorageConnectionStringSecretName = "AzureStorageConnectionString";
 
-    public static string GetStorageConnectionString()
+    public static async Task<string> GetStorageConnectionString()
     {
-        var res = Environment.GetEnvironmentVariable(AzureStorageEnvVarName1);
-        if (string.IsNullOrWhiteSpace(res))
-        {
-            res = Environment.GetEnvironmentVariable(AzureStorageEnvVarName2);
-            if (string.IsNullOrWhiteSpace(res))
-            {
-                throw new InvalidOperationException($"No Azure Storage Connection string specified in {AzureStorageEnvVarName1} or {AzureStorageEnvVarName2}");
-            }
-        }
-
-        return res!;
+        var secretClient = new SecretClient(new Uri(AzureKeyvaultUrl), new DefaultAzureCredential());
+        var storageConnectionString = await secretClient.GetSecretAsync(AzureStorageConnectionStringSecretName);
+        return storageConnectionString.Value.Value;
     }
 }
+
