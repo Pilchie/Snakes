@@ -16,7 +16,7 @@
     <Exec Command="hostname" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(ComputerName)' == ''">
       <Output PropertyName="_HostName" TaskParameter="ConsoleOutput" />
     </Exec>
-    <Exec Command="git rev-parse --short head" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(GitSha)' == ''">
+    <Exec Command="git rev-parse --short HEAD" StandardOutputImportance="Low" ConsoleToMSBuild="True" IgnoreExitCode="False" WorkingDirectory="$(MSBuildThisFileDirectory)" Condition="'$(GitSha)' == ''">
       <Output PropertyName="GitSha" TaskParameter="ConsoleOutput" />
     </Exec>
     <PropertyGroup>
